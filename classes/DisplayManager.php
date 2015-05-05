@@ -51,32 +51,46 @@ class DisplayManager
         echo $searchBox;
     }
 
-    public function getCourseSelector($selectedCourseId = null)
+    private function getUsersCourses($userId, $roleid = null)
     {
-        global $OUTPUT;
+        global $DB;
 
-        // TODO: Add setting to limit to courses in a certain category
+        $values = array(
+            $userId
+        );
 
-        //Get the IDs of all coures in the Teachng & Learning category
-        // FIXME: NO!
-        $teachinglearning = get_teaching_and_learning_ids();
+        $sql = 'SELECT
+            crs.id,
+            crs.fullname
+        FROM {role_assignments} ra
+        JOIN {context} ct ON ct.id = ra.contextid
+        JOIN {course} crs ON crs.id = ct.instanceid
+        WHERE ra.userid = ?';
 
-        // Get the courses a user is enroled in
-        $mycourses = enrol_get_my_courses();
-        if (empty($mycourses)) {
-            return false;
+        if ($categoryCtx = $this->userDirectory->getCategoryContext()) {
+            $path = $categoryCtx->path . '/%';
+            $sql .= " AND ct.path LIKE ?";
+            $values[] = $path;
         }
 
+        if (!is_null($roleid)) {
+            $sql .= ' AND ra.roleid = ? ';
+            $values[] = $roleid;
+        }
+
+        $sql .= 'ORDER BY crs.fullname';
+
+        return $DB->get_records_sql($sql, $values);
+    }
+
+    public function getCourseSelector($selectedCourseId = null)
+    {
+        global $OUTPUT, $USER;
+
+        $courses = $this->getUsersCourses($USER->id);
         $courselist = array();
 
-        //Only show courses user is enrolled in from the Teaching & Learning menu
-        foreach ($mycourses as $mycourse) {
-
-            if (!isset($teachinglearning[$mycourse->id])) {
-                //Not a T&L course
-                continue;
-            }
-
+        foreach ($courses as $mycourse) {
             // Add to the filter by courses dropdown
             $courselist[$mycourse->id] = $mycourse->fullname;
         }

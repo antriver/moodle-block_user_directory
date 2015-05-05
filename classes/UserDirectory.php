@@ -149,7 +149,7 @@ class UserDirectory
 
     public function isTeacher($user)
     {
-        $teacherCohortId = (int)get_config('block_homework', 'teacher_cohort');
+        $teacherCohortId = (int)get_config('block_user_directory', 'teacher_cohort');
         if ($teacherCohortId) {
             return cohort_is_member($teacherCohortId, $user->id);
         }
@@ -157,7 +157,7 @@ class UserDirectory
 
     public function isStudent($user)
     {
-        $studentCohortId = (int)get_config('block_homework', 'student_cohort');
+        $studentCohortId = (int)get_config('block_user_directory', 'student_cohort');
         if ($studentCohortId) {
             return cohort_is_member($studentCohortId, $user->id);
         }
@@ -165,7 +165,7 @@ class UserDirectory
 
     public function isParent($user)
     {
-        $parentCohortId = (int)get_config('block_homework', 'parent_cohort');
+        $parentCohortId = (int)get_config('block_user_directory', 'parent_cohort');
         if ($parentCohortId) {
             return cohort_is_member($parentCohortId, $user->id);
         }
@@ -315,5 +315,30 @@ class UserDirectory
 
     }
 
+    /**
+     * Return the category ID that the directory is set to work from
+     */
+    public function getCategoryId()
+    {
+        return (int)get_config('block_user_directory', 'course_category');
+    }
+
+    public function getCategoryContext()
+    {
+        // Limit to a certain category?
+        $categoryId = $this->getCategoryId();
+        if (!$categoryId) {
+            return null;
+        }
+        return context_coursecat::instance($categoryId);
+    }
+
+    public function getCategoryContextPath()
+    {
+        if ($categoryContext = $this->getCategoryContext()) {
+            return $categoryContext->path;
+        }
+        return null;
+    }
 
 }

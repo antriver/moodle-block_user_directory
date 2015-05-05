@@ -43,6 +43,34 @@ $settings->add(
     )
 );
 
+
+/**
+ * Category to show courses from
+ */
+
+// Load all categories to show in the list
+require_once $CFG->dirroot . '/course/externallib.php';
+$categories = core_course_external::get_categories(array(), false);
+$categoryList = array(
+    0 => '[All Cateogries]'
+);
+foreach ($categories as $category) {
+    $categoryList[$category['id']] = $category['name'];
+}
+asort($categoryList);
+
+$settings->add(
+    new admin_setting_configselect(
+        'block_user_directory/course_category',
+        get_string('settings_course_category_name', 'block_user_directory'),
+        get_string('settings_course_category_desc', 'block_user_directory'),
+        0,
+        $categoryList
+    )
+);
+
+
+
 /**
  * User levels
  */
