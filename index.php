@@ -388,7 +388,7 @@ if ($results->totalcount < 1) {
                     }
 
                     // Button to "Login As" user
-                    if ($USER->id != $user->id && !session_is_loggedinas() && has_capability('moodle/user:loginas', $context) && !is_siteadmin($user->id)) {
+                    if ($USER->id != $user->id && has_capability('moodle/user:loginas', $context) && !is_siteadmin($user->id)) {
                         echo html_writer::link(new moodle_url('/course/loginas.php?id='. $course->id .'&user='. $user->id .'&sesskey='. sesskey()), get_string('loginas'), array('class' => 'btn btn-block btn-default')).'</button>';
                     }
 

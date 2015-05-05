@@ -11,6 +11,8 @@ namespace block_user_directory;
 use Exception;
 use PDO;
 use context_course;
+use context_coursecat;
+use context_helper;
 use moodle_url;
 
 class UserDirectory
@@ -176,7 +178,7 @@ class UserDirectory
         global $DB;
 
         // We are looking for all users with this role assigned in this context or higher
-        $contextlist = get_related_contexts_string($this->context);
+        $contextlist = $this->context->get_parent_context_ids(true);
 
         list($esql, $params) = get_enrolled_sql($this->context, null, $currentgroup, true);
         $joins = array("FROM {user} u");
@@ -195,7 +197,7 @@ class UserDirectory
             'timezone',
             'maildisplay',
             'imagealt',
-            'lastaccess'
+            'lastaccess',
         ));
 
         // Course users
@@ -207,12 +209,18 @@ class UserDirectory
             u.email,
             u.city,
             u.country,
+            u.department,
             u.picture,
             u.lang,
             u.timezone,
             u.maildisplay,
             u.imagealt,
-            u.idnumber";
+            u.idnumber,
+            u.alternatename,
+            u.middlename,
+            u.firstnamephonetic,
+            u.lastnamephonetic
+        ";
 
         if ($extrasql) {
             $select .= $extrasql;
@@ -226,13 +234,18 @@ class UserDirectory
         $params['courseid'] = $this->course->id;
 
         // performance hacks - we preload user contexts together with accounts
-        list($ccselect, $ccjoin) = context_instance_preload_sql('u.id', \CONTEXT_USER, 'ctx');
+
+        $ccselect = ', ' . context_helper::get_preload_record_columns_sql('ctx');
+        $ccjoin = "LEFT JOIN {context} ctx ON (ctx.instanceid = u.id AND ctx.contextlevel = :contextlevel)";
+        $params['contextlevel'] = \CONTEXT_USER;
+
         $select .= $ccselect;
         $joins[] = $ccjoin;
 
         // limit list to users with some role only
         if ($this->roleid) {
-            $wheres[] = "u.id IN (SELECT userid FROM {role_assignments} WHERE roleid = :roleid AND contextid $contextlist)";
+            $contextlist = implode(',', $contextlist);
+            $wheres[] = "u.id IN (SELECT userid FROM {role_assignments} WHERE roleid = :roleid AND contextid IN ($contextlist))";
             $params['roleid'] = $this->roleid;
         }
 
@@ -298,9 +311,6 @@ class UserDirectory
         } else {
             $sort = '';
         }
-
-        //print_object("$select $from $where $sort");
-        //print_object($params);
 
         $matchcount = $DB->count_records_sql("SELECT COUNT(u.id) $from $where", $params);
 
