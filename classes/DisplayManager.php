@@ -121,7 +121,7 @@ class DisplayManager
 
         $rolenamesurl = new moodle_url('/blocks/user_directory/?courseid=' . $this->userDirectory->courseid . '&sifirst=&silast=');
 
-        $rolenames = role_fix_names(get_profile_roles($context), $context, null, true);
+        $rolenames = role_fix_names(get_profile_roles($context), $context, \ROLENAME_ALIAS, true);
 
         asort($rolenames);
         $rolenames = array(0 => get_string('allroles', 'block_user_directory')) + $rolenames;
