@@ -85,7 +85,7 @@ class DisplayManager
 
     public function getCourseSelector($selectedCourseId = null)
     {
-        global $OUTPUT, $USER;
+        global $OUTPUT, $USER, $DB;
 
         $courses = $this->getUsersCourses($USER->id);
         $courselist = array();
@@ -96,7 +96,12 @@ class DisplayManager
         }
 
         asort($courselist);
-        $courselist = array($this->userDirectory->getConfig('courseid') => get_string('allcourses', 'block_user_directory')) + $courselist;
+
+        $directoryCourse = get_course($this->userDirectory->getConfig('courseid'));
+
+        $courselist = array(
+            $directoryCourse->id => $directoryCourse->fullname
+        ) + $courselist;
 
         // Create the <select>
         $filter_by_course_url = new moodle_url('/blocks/user_directory/?roleid=' . $this->userDirectory->roleid . '&sifirst=&silast=');
