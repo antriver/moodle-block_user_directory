@@ -228,8 +228,9 @@ if ($bulkoperations) {
 $table->pagesize($userDirectory->perpage, null);
 
 $results = $userDirectory->getUsers($table, $currentgroup);
-
+echo '<div class="text-center">';
 $table->initialbars(true);
+echo'</div>';
 $table->pagesize($userDirectory->perpage, $results->matchcount);
 
 
@@ -253,7 +254,9 @@ if ($results->totalcount < 1) {
         $lastinitial = $table->get_initial_last();
         $pagingBars .= $userDirectory->display->getLetterBar($firstinitial, $lastinitial);
         $pagingBars .= $userDirectory->display->getPagingBar($results->matchcount, $table->get_page_start());
+        echo '<div class="text-center">';
         echo $pagingBars;
+        echo '</div>';
         echo '<hr/>';
     }
 
