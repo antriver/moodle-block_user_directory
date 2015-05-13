@@ -450,7 +450,9 @@ if ($bulkoperations) {
 
 
 if ($results->totalcount > $userDirectory->perpage) {
+    echo '<div class="text-center">';
     echo $pagingBars;
+    echo '</div>';
 }
 
 echo $OUTPUT->footer();
