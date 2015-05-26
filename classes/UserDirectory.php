@@ -351,4 +351,17 @@ class UserDirectory
         return null;
     }
 
+
+    public function getUsersChildren($userId)
+    {
+        global $DB;
+        $usercontexts = $DB->get_records_sql("SELECT c.instanceid, c.instanceid, u.id AS userid, u.firstname, u.lastname
+         FROM {role_assignments} ra, {context} c, {user} u
+         WHERE ra.userid = ?
+              AND ra.contextid = c.id
+              AND c.instanceid = u.id
+              AND c.contextlevel = " . \CONTEXT_USER, array($userId));
+        return $usercontexts;
+    }
+
 }

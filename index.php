@@ -23,10 +23,12 @@ $systemcontext = context_system::instance();
  * Load permissions
  */
 $bulkoperations = has_capability('moodle/course:bulkmessaging', $context);
-$isparent = $userDirectory->isParent($USER);
-$isstudent = $userDirectory->isStudent($USER);
-$isteacher = $userDirectory->isTeacher($USER);
-
+$viewinguserisparent = $userDirectory->isParent($USER);
+$viewinguserisstudent = $userDirectory->isStudent($USER);
+$viewinguseristeacher = $userDirectory->isTeacher($USER);
+if ($viewinguserisparent) {
+    $viewinguserschildren = $userDirectory->getUsersChildren($USER->id);
+}
 
 // Check to see if groups are being used in this course
 // and if so, set $currentgroup to reflect the current group
@@ -263,7 +265,7 @@ if ($results->totalcount < 1) {
     // If we're showing the users in a specific class, and the viewing user is a teacher, print out the class emails:
     // (Any teacher. Not specifically a teacher of this class)
 
-    if ($currentgroup && $isteacher) {
+    if ($currentgroup && $viewinguseristeacher) {
         // FIXME: SSIS
         $groupname = groups_get_group_name($currentgroup);
         echo '<br /><strong><i class="icon-user"></i> Bulk email for all students in this class:</strong><br />';
@@ -319,11 +321,12 @@ if ($results->totalcount < 1) {
                 continue;
             }
 
-            $userisparent = $userDirectory->isParent($user);
-            $userisstudent = $userDirectory->isStudent($user);
+            $thisuserisparent = $userDirectory->isParent($user);
+            $thisuserisstudent = $userDirectory->isStudent($user);
+            $thisuseristeacher = $userDirectory->isTeacher($user);
 
             // Don't show parents to students or other parents
-            if ($userisparent && ($isstudent || $isparent)) {
+            if ($thisuserisparent && (!$viewinguseristeacher)) {
                 continue;
             }
 
@@ -338,21 +341,45 @@ if ($results->totalcount < 1) {
                 echo '<td>';
                 //Email address field
                  if (
-                    $user->maildisplay == 1
-                    or
-                    ($user->maildisplay == 2 and ($course->id != SITEID) and !isguestuser())
-                    or
-                    has_capability('moodle/course:viewhiddenuserfields', $context)
-                    or
-                    in_array('email', $extrafields)
+                    (
+                        (!$thisuserisparent || $viewinguseristeacher)
+                        and (
+                            $user->maildisplay == 1
+                            or
+                            ($user->maildisplay == 2 and ($course->id != SITEID) and !isguestuser())
+                            or
+                            has_capability('moodle/course:viewhiddenuserfields', $context)
+                            or
+                            in_array('email', $extrafields)
+                        )
+                    )
                     or
                     ($user->id == $USER->id)
                 ) {
 
                     echo '<i class="fa fa-envelope"></i> ' . html_writer::link("mailto:$user->email", $user->email);
 
-                    // If the user looking at the page is a teacher and this user is a student
-                    if ($isteacher && $userisstudent) {
+                    // Emails shown to parents for their own child
+                    if ($viewinguserisparent && $thisuserisstudent && isset($viewinguserschildren[$user->id])) {
+                        // FIXME: SSIS
+                        // Show their parent's email address
+                        $parent_email_address = $user->username . "PARENTS@student.ssis-suzhou.net";
+                        echo '<br/><i class="fa fa-male"></i> Parents\' Email: ' . html_writer::link("mailto:$parent_email_address", $parent_email_address);
+
+                        // FIXME: SSIS
+                        if ((int)$user->department >= 6) {
+                            // Show the address to bulk email all the student's teachers
+                            $teachers_email_address = $user->username . "TEACHERS@student.ssis-suzhou.net";
+                            echo '<br/><i class="fa fa-magic"></i> All Teachers\' Email: ' . html_writer::link("mailto:$teachers_email_address", $teachers_email_address);
+
+                            // Show their homeroom teacher's email address
+                            $hr_email_address = $user->username . "HR@student.ssis-suzhou.net";
+                            echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link("mailto:$hr_email_address", $hr_email_address);
+                        }
+                    }
+
+                    // Emails shown to teachers
+                    if ($viewinguseristeacher && $thisuserisstudent) {
 
                         // FIXME: SSIS
                         // Show their parent's email address
@@ -367,7 +394,7 @@ if ($results->totalcount < 1) {
 
                             // Show their homeroom teacher's email address
                             $hr_email_address = $user->username . "HR@student.ssis-suzhou.net";
-                            echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link("mailto:$teachers_email_address", $teachers_email_address);
+                            echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link("mailto:$hr_email_address", $hr_email_address);
                         }
                     }
 
