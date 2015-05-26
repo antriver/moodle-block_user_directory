@@ -326,7 +326,7 @@ if ($results->totalcount < 1) {
             $thisuseristeacher = $userDirectory->isTeacher($user);
 
             // Don't show parents to students or other parents
-            if ($thisuserisparent && (!$viewinguseristeacher)) {
+            if ($thisuserisparent && ($viewinguserisstudent || $viewinguserisparent)) {
                 continue;
             }
 
