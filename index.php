@@ -342,8 +342,7 @@ if ($results->totalcount < 1) {
                 //Email address field
                  if (
                     (
-                        (!$thisuserisparent || $viewinguseristeacher)
-                        and (
+                        (
                             $user->maildisplay == 1
                             or
                             ($user->maildisplay == 2 and ($course->id != SITEID) and !isguestuser())
