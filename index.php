@@ -359,27 +359,7 @@ if ($results->totalcount < 1) {
 
                     echo '<i class="fa fa-envelope"></i> ' . html_writer::link("mailto:$user->email", $user->email);
 
-                    // Emails shown to parents for their own child
-                    if ($viewinguserisparent && $thisuserisstudent && isset($viewinguserschildren[$user->id])) {
-                        // FIXME: SSIS
-                        // Show their parent's email address
-                        $parent_email_address = $user->username . "PARENTS@student.ssis-suzhou.net";
-                        echo '<br/><i class="fa fa-male"></i> Parents\' Email: ' . html_writer::link("mailto:$parent_email_address", $parent_email_address);
-
-                        // FIXME: SSIS
-                        if ((int)$user->department >= 6) {
-                            // Show the address to bulk email all the student's teachers
-                            $teachers_email_address = $user->username . "TEACHERS@student.ssis-suzhou.net";
-                            echo '<br/><i class="fa fa-magic"></i> All Teachers\' Email: ' . html_writer::link("mailto:$teachers_email_address", $teachers_email_address);
-
-                            // Show their homeroom teacher's email address
-                            $hr_email_address = $user->username . "HR@student.ssis-suzhou.net";
-                            echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link("mailto:$hr_email_address", $hr_email_address);
-                        }
-                    }
-
-                    // Emails shown to teachers
-                    if ($viewinguseristeacher && $thisuserisstudent) {
+                    if ($thisuserisstudent) {
 
                         // FIXME: SSIS
                         // Show their parent's email address
