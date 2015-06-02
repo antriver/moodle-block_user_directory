@@ -391,9 +391,10 @@ if ($results->totalcount < 1) {
 
                 echo '<td>';
 
-
-                    // OLP Link
-                    echo html_writer::link(new moodle_url('/dragonnet/olp.php?userid='. $user->id), 'Online Portfolio', array('class' => 'btn btn-block btn-default'));
+                    if ($thisuserisstudent) {
+                        // OLP Link
+                        echo html_writer::link(new moodle_url('/dragonnet/olp.php?userid='. $user->id), 'Online Portfolio', array('class' => 'btn btn-block btn-default'));
+                    }
 
                     // Button to view notes about a user
                     if (!empty($CFG->enablenotes) and (has_capability('moodle/notes:manage', $context) || has_capability('moodle/notes:view', $context))) {
