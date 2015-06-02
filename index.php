@@ -391,6 +391,10 @@ if ($results->totalcount < 1) {
 
                 echo '<td>';
 
+
+                    // OLP Link
+                    echo html_writer::link(new moodle_url('/dragonnet/olp.php?userid='. $user->id), 'Online Portfolio', array('class' => 'btn btn-block btn-default'));
+
                     // Button to view notes about a user
                     if (!empty($CFG->enablenotes) and (has_capability('moodle/notes:manage', $context) || has_capability('moodle/notes:view', $context))) {
                         echo html_writer::link(new moodle_url('/notes/index.php?course=' . $course->id. '&user='.$user->id), get_string('notes','notes'), array('class' => 'btn btn-block btn-default'));
@@ -398,7 +402,7 @@ if ($results->totalcount < 1) {
 
                     // Button to "Login As" user
                     if ($USER->id != $user->id && has_capability('moodle/user:loginas', $context) && !is_siteadmin($user->id)) {
-                        echo html_writer::link(new moodle_url('/course/loginas.php?id='. $course->id .'&user='. $user->id .'&sesskey='. sesskey()), get_string('loginas'), array('class' => 'btn btn-block btn-default')).'</button>';
+                        echo html_writer::link(new moodle_url('/course/loginas.php?id='. $course->id .'&user='. $user->id .'&sesskey='. sesskey()), get_string('loginas'), array('class' => 'btn btn-block btn-default'));
                     }
 
                     // Button to view user's full profile
