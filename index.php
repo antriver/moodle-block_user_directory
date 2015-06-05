@@ -358,7 +358,7 @@ if ($results->totalcount < 1) {
 
                     echo '<i class="fa fa-envelope"></i> ' . html_writer::link("mailto:$user->email", $user->email);
 
-                    if ($thisuserisstudent) {
+                    if ($thisuserisstudent && !$viewinguserisstudent) {
 
                         // FIXME: SSIS
                         // Show their parent's email address
