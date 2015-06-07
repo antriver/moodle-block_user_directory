@@ -340,44 +340,44 @@ if ($results->totalcount < 1) {
 
                 echo '<td>';
                 //Email address field
-                 if (
+                if ($user->id == $USER->id ||
                     (
-                        (
-                            $user->maildisplay == 1
-                            or
-                            ($user->maildisplay == 2 and ($course->id != SITEID) and !isguestuser())
-                            or
-                            has_capability('moodle/course:viewhiddenuserfields', $context)
-                            or
-                            in_array('email', $extrafields)
-                        )
+                        $user->maildisplay == 1
+                        or
+                        ($user->maildisplay == 2 and ($course->id != SITEID) and !isguestuser())
+                        or
+                        has_capability('moodle/course:viewhiddenuserfields', $context)
                     )
-                    or
-                    ($user->id == $USER->id)
                 ) {
-
+                    // User's email address
                     echo '<i class="fa fa-envelope"></i> ' . html_writer::link("mailto:$user->email", $user->email);
 
-                    if ($thisuserisstudent && !$viewinguserisstudent) {
+                }
 
-                        // FIXME: SSIS
-                        // Show their parent's email address
-                        $parent_email_address = $user->username . "PARENTS@student.ssis-suzhou.net";
-                        echo '<br/><i class="fa fa-male"></i> Parents\' Email: ' . html_writer::link("mailto:$parent_email_address", $parent_email_address);
+                if ($thisuserisstudent && $viewinguseristeacher) {
 
-                        // FIXME: SSIS
-                        if ((int)$user->department >= 6) {
-                            // Show the address to bulk email all the student's teachers
-                            $teachers_email_address = $user->username . "TEACHERS@student.ssis-suzhou.net";
-                            echo '<br/><i class="fa fa-magic"></i> All Teachers\' Email: ' . html_writer::link("mailto:$teachers_email_address", $teachers_email_address);
-
-                            // Show their homeroom teacher's email address
-                            $hr_email_address = $user->username . "HR@student.ssis-suzhou.net";
-                            echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link("mailto:$hr_email_address", $hr_email_address);
-                        }
-                    }
+                    // Show their parent's email address
+                    $parent_email_address = $user->username . "PARENTS@student.ssis-suzhou.net";
+                    echo '<br/><i class="fa fa-male"></i> Parents\' Email: ' . html_writer::link("mailto:$parent_email_address", $parent_email_address);
 
                 }
+
+                if ($thisuserisstudent && $viewinguseristeacher && $user->department >= 6) {
+
+                    // Show the address to bulk email all the student's teachers
+                    $teachers_email_address = $user->username . "TEACHERS@student.ssis-suzhou.net";
+                    echo '<br/><i class="fa fa-magic"></i> All Teachers\' Email: ' . html_writer::link("mailto:$teachers_email_address", $teachers_email_address);
+
+                }
+
+                if ($thisuserisstudent && $viewinguseristeacher && $user->department >= 6) {
+
+                    // Show their homeroom teacher's email address
+                    $hr_email_address = $user->username . "HR@student.ssis-suzhou.net";
+                    echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link("mailto:$hr_email_address", $hr_email_address);
+
+                }
+
                 echo '</td>';
 
                 echo '<td>' . $user->department . '</td>';
