@@ -9,6 +9,7 @@
 namespace block_user_directory;
 
 use context_course;
+use context_system;
 use moodle_url;
 use paging_bar;
 use single_select;
@@ -32,12 +33,12 @@ class DisplayManager
         $course = $this->userdirectory->getCourse();
         $search = $this->userdirectory->search;
         $searchin = $this->userdirectory->searchin;
-        $roleid = $this->userdirectory->roleid;
+        $role = $this->userdirectory->role;
 
         // !Search box above user list
         $searchBox = '<form action="index.php" class="search-form form form-inline">
             <input type="hidden" name="courseid" value="' . $course->id . '" />
-            <input type="hidden" name="roleid" value="' . $roleid . '" />
+            <input type="hidden" name="role" value="' . $role . '" />
             <label for="search">' . get_string('search_for', 'block_user_directory'). '</label>
             <input type="text" id="search" name="search" value="' . s($search) . '" /> ' . get_string('search_in', 'block_user_directory') . '
             <select name="searchin">
@@ -59,7 +60,7 @@ class DisplayManager
             $userId
         );
 
-        $sql = 'SELECT
+        $sql = 'SELECT DISTINCT
             crs.id,
             crs.fullname
         FROM {role_assignments} ra
@@ -164,45 +165,25 @@ class DisplayManager
 
     }
 
+
     /**
      * Returns the HTML to display the role selector
+     *
+     * We build the list of possible roles
      */
-    public function getRoleSelector($selectedRoleId)
+    public function getRoleSelector($selectedRole)
     {
         global $CFG, $OUTPUT;
-        $context = $this->userdirectory->getContext();
 
-        $rolenames = role_fix_names(get_profile_roles($context), $context, \ROLENAME_ALIAS, true);
+        $visibleRoles = $this->userdirectory->getVisibleRoles();
 
-        asort($rolenames);
-        $rolenames = array(0 => get_string('allroles', 'block_user_directory')) + $rolenames;
-
-        // Make sure other roles may not be selected by any means.
-        if (empty($rolenames[$selectedRoleId])) {
-            print_error('noparticipants');
+        $selectRoles = [];
+        foreach ($visibleRoles as $name => $ids) {
+            $selectRoles[$name] = $this->getString("role_{$name}");
         }
 
-        // No roles to display yet?
-        // frontpage course is an exception, on the front page course we should display all users.
-        if (empty($rolenames) && !$isfrontpage) {
-            if (has_capability('moodle/role:assign', $context)) {
-                redirect('/'.$CFG->admin.'/roles/assign.php?contextid='.$context->id);
-            } else {
-                print_error('noparticipants');
-            }
-        }
-
-        // If there are multiple roles in the course, then show a drop down menu for switching
-        if (count($rolenames) > 1) {
-
-            $url = $this->userdirectory->getBaseUrl('roleid');
-            $html = $OUTPUT->single_select($url, 'roleid', $rolenames, $selectedRoleId, null, 'rolesform');
-
-        } else if (count($rolenames) == 1) {
-            // when all users with the same role - print its name
-            $rolename = reset($rolenames);
-            $html = $rolename;
-        }
+        $url = $this->userdirectory->getBaseUrl('role');
+        $html = $OUTPUT->single_select($url, 'role', $selectRoles, $selectedRole, null, 'rolesform');
 
         return $html;
     }
@@ -245,7 +226,7 @@ class DisplayManager
             }
         }
 
-        $url = new moodle_url('/blocks/user_directory/?roleid=' . $this->userdirectory->roleid . '&courseid=' . $this->userdirectory->courseid . '&sifirst=&silast=');
+        $url = $this->userdirectory->getBaseUrl('group');
 
         if (count($groupsmenu) == 1) {
             $groupname = reset($groupsmenu);
@@ -315,4 +296,8 @@ class DisplayManager
         return $OUTPUT->render($pagingbar);
     }
 
+    public function getString($key)
+    {
+        return get_string($key, 'block_user_directory');
+    }
 }

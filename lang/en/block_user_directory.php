@@ -24,12 +24,11 @@ $string['user_directory:myaddinstance'] = 'Add a user directory block to "my moo
 
 $string['andor'] = 'and/or';
 
-$string['allroles'] = '[All Roles]';
 $string['allcourses'] = '[All Courses]';
 $string['allgroups'] = '[Any Group]';
 $string['alldepartments'] = '[Any Homeroom]';
 
-$string['filter_before_role'] = 'Show every ';
+$string['filter_before_role'] = 'Show ';
 $string['filter_before_department'] = ' from ';
 $string['filter_before_course'] = ' in ';
 
@@ -44,3 +43,8 @@ $string['settings_teacher_cohort_desc'] = 'Users in this cohort will have be con
 
 $string['settings_parent_cohort_name'] = 'Parent Cohort';
 $string['settings_parent_cohort_desc'] = 'Users in this cohort will have be considered parents in the directory';
+
+$string['role_all'] = 'Everybody';
+$string['role_teacher'] = 'Teachers';
+$string['role_parent'] = 'Parents';
+$string['role_student'] = 'Students';

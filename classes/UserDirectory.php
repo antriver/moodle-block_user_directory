@@ -31,7 +31,8 @@ class UserDirectory
     public $accesssince;
     public $search;
     public $searchin;
-    public $roleid;
+    public $role;
+    public $roleids;
     public $courseid;
     public $department;
 
@@ -40,9 +41,18 @@ class UserDirectory
     private $course = null;
     private $context = null;
 
+    public $viewinguserisparent = null;
+    public $viewinguserisstudent = null;
+    public $viewinguseristeacher = null;
+
     function __construct()
     {
-        global $CFG;
+        global $CFG, $USER;
+
+        require_once $CFG->dirroot . '/cohort/lib.php';
+        $this->viewinguserisparent = $this->isParent($USER);
+        $this->viewinguserisstudent = $this->isStudent($USER);
+        $this->viewinguseristeacher = $this->isTeacher($USER);
 
         $this->display = new DisplayManager($this);
 
@@ -50,8 +60,6 @@ class UserDirectory
         $this->loadCourse();
 
         require_capability('moodle/course:viewparticipants', $this->context);
-
-        require_once $CFG->dirroot . '/cohort/lib.php';
     }
 
     public function getString($key, $param = null)
@@ -82,15 +90,20 @@ class UserDirectory
         $this->search = optional_param('search', '', \PARAM_RAW);
         $this->searchin = optional_param('searchin', '', \PARAM_RAW);
 
-        // Optional roleid, 0 means all enrolled users (or all on the frontpage).
-        $this->roleid = optional_param('roleid', 0, \PARAM_INT);
+        $this->role = optional_param('role', 'all', \PARAM_RAW);
 
-        // One of this or.
-        //$this->contextid = optional_param('contextid', 0, \PARAM_INT);
+        $visibleRoles = $this->getVisibleRoles();
+        if (!isset($visibleRoles[$this->role])) {
+            $this->role = array_keys($visibleRoles)[0];
+        }
+        $this->roleids = $visibleRoles[$this->role];
 
         $this->courseid = optional_param('courseid', $this->getConfig('courseid'), PARAM_INT);
 
         $this->department = optional_param('department', '', \PARAM_RAW);
+        if ($this->role !== 'students') {
+            $this->department = '';
+        }
     }
 
     /**
@@ -105,7 +118,7 @@ class UserDirectory
             'courseid' => $this->courseid,
             'department' => $this->department,
             'page' => '',
-            'roleid' => $this->roleid,
+            'role' => $this->role,
             'search' => s($this->search),
             'searchin' => $this->searchin,
             'sifirst' => '',
@@ -120,6 +133,8 @@ class UserDirectory
 
         return new moodle_url('/blocks/user_directory/', $params);
     }
+
+
 
     public function logView()
     {
@@ -143,6 +158,9 @@ class UserDirectory
         $this->context = context_course::instance($this->course->id, \MUST_EXIST);
     }
 
+    /**
+     * Returns the current selected course
+     */
     public function getCourse()
     {
         if (!is_null($this->course)) {
@@ -155,6 +173,16 @@ class UserDirectory
         if (!is_null($this->context)) {
             return $this->context;
         }
+    }
+
+    public function getDirectoryCourse()
+    {
+        return $DB->get_record('course', array('id' => $this->getConfig('courseid')), '*', \MUST_EXIST);
+    }
+
+    public function getDirectoryCourseContext()
+    {
+        return $this->context = context_course::instance($this->getConfig('courseid'), \MUST_EXIST);
     }
 
     public function isTeacher($user)
@@ -183,7 +211,7 @@ class UserDirectory
 
     public function getUsers($table, $currentgroup)
     {
-        global $DB;
+        global $DB, $USER;
 
         // We are looking for all users with this role assigned in this context or higher
         $contextlist = $this->context->get_parent_context_ids(true);
@@ -251,15 +279,38 @@ class UserDirectory
         $joins[] = $ccjoin;
 
         // limit list to users with some role only
-        if ($this->roleid) {
-            $contextlist = implode(',', $contextlist);
-            $wheres[] = "u.id IN (SELECT userid FROM {role_assignments} WHERE roleid = :roleid AND contextid IN ($contextlist))";
-            $params['roleid'] = $this->roleid;
-        }
+
+        $contextlist = implode(',', $contextlist);
+        $roleids = implode(',', $this->roleids);
+        $wheres[] = "u.id IN (SELECT userid FROM {role_assignments} WHERE roleid IN({$roleids}) AND contextid IN ($contextlist))";
 
         if ($this->department) {
             $wheres[] = "u.department = :department";
             $params['department'] = $this->department;
+        }
+
+        // Remove non-visible users
+        // For students: Remove everybody but students and teachers
+        // For parents: Remove everybody but teachers
+        $teacherCohortId = (int)get_config('block_user_directory', 'teacher_cohort');
+        $studentCohortId = (int)get_config('block_user_directory', 'student_cohort');
+        $parentCohortId = (int)get_config('block_user_directory', 'parent_cohort');
+
+        $viewinguserisparent = $this->isParent($USER);
+        $viewinguserisstudent = $this->isStudent($USER);
+        $viewinguseristeacher = $this->isTeacher($USER);
+
+        if ($viewinguserisparent) {
+
+            $wheres[] = "u.id IN (SELECT userid FROM {cohort_members} WHERE userid = u.id AND cohortid = :teachercohortid)";
+            $params['teachercohortid'] = $teacherCohortId;
+
+        } elseif ($viewinguserisstudent) {
+
+            $wheres[] = "u.id IN (SELECT userid FROM {cohort_members} WHERE userid = u.id AND (cohortid = :teachercohortid OR cohortid = :studentcohortid))";
+            $params['teachercohortid'] = $teacherCohortId;
+            $params['studentcohortid'] = $studentCohortId;
+
         }
 
         $from = implode("\n", $joins);
@@ -269,8 +320,8 @@ class UserDirectory
             $where = "";
         }
 
-        //$totalcount is the total of everybody in this section
-        //$matchcount (below) is the total of users in this section who match the search
+        // $totalcount is the total of everybody in this section
+        // $matchcount (below) is the total of users in this section who match the search
         $totalcount = $DB->count_records_sql("SELECT COUNT(u.id) $from $where", $params);
 
         // Perform a search.
@@ -375,6 +426,73 @@ class UserDirectory
               AND c.instanceid = u.id
               AND c.contextlevel = " . \CONTEXT_USER, array($userId));
         return $usercontexts;
+    }
+
+    /**
+     * Returns the list of roles a user is allowed to see in the directory.
+     * This is build by getting all the roles defined in the site and filtering it
+     * by the viewing user's cohort.
+     *
+     * @return array[] An array of arrays of roleids
+     */
+    public function getVisibleRoles()
+    {
+        // Note: The role with the shortname of 'teacher' is non-editing tacher
+        // The Teacher role has the 'editingteacher' shortname
+        $siteRoles = [];
+        foreach (get_all_roles() as $role) {
+            $siteRoles[$role->shortname] = $role->id;
+        }
+
+        if ($this->viewinguserisstudent) {
+
+            return [
+                'all' => [
+                    $siteRoles['editingteacher'],
+                    $siteRoles['teacher'],
+                    $siteRoles['student'],
+                ],
+                'teacher' => [
+                    $siteRoles['editingteacher'],
+                    $siteRoles['teacher']
+                ],
+                'student' => [
+                    $siteRoles['student']
+                ],
+            ];
+
+        } elseif ($this->viewinguserisparent) {
+
+            return [
+                'teacher' => [
+                    $siteRoles['editingteacher'],
+                    $siteRoles['teacher']
+                ],
+            ];
+
+        } else {
+
+            return [
+                'all' => [
+                    $siteRoles['editingteacher'],
+                    $siteRoles['teacher'],
+                    $siteRoles['student'],
+                    $siteRoles['parent']
+                ],
+                'teacher' => [
+                    $siteRoles['editingteacher'],
+                    $siteRoles['teacher']
+                ],
+                'student' => [
+                    $siteRoles['student']
+                ],
+                'parent' => [
+                    $siteRoles['parent']
+                ]
+            ];
+
+        }
+
     }
 
 }

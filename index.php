@@ -19,16 +19,12 @@ $course = $userDirectory->getCourse();
 $context = $userDirectory->getContext();
 $systemcontext = context_system::instance();
 
+require_login($course);
+
 /**
  * Load permissions
  */
 $bulkoperations = has_capability('moodle/course:bulkmessaging', $context);
-$viewinguserisparent = $userDirectory->isParent($USER);
-$viewinguserisstudent = $userDirectory->isStudent($USER);
-$viewinguseristeacher = $userDirectory->isTeacher($USER);
-if ($viewinguserisparent) {
-    $viewinguserschildren = $userDirectory->getUsersChildren($USER->id);
-}
 
 // Check to see if groups are being used in this course
 // and if so, set $currentgroup to reflect the current group
@@ -45,8 +41,6 @@ $isseparategroups = ($course->groupmode == SEPARATEGROUPS and !has_capability('m
 /**
  * Begin output
  */
-require_login($course);
-
 $PAGE->set_url($userDirectory->getBaseUrl());
 $PAGE->set_title($userDirectory->display->getPageTitle());
 $PAGE->set_heading($userDirectory->display->getPageTitle());
@@ -94,9 +88,9 @@ if (has_capability('moodle/course:viewhiddenuserfields', $context)) {
 echo '<h2 class="user-directory-title text-center">';
 
     echo get_string('filter_before_role', 'block_user_directory');
-    echo $userDirectory->display->getRoleSelector($userDirectory->roleid);
+    echo $userDirectory->display->getRoleSelector($userDirectory->role);
 
-    if (!$userDirectory->roleid || $userDirectory->roleid == 5) {
+    if ($userDirectory->role === 'student') {
         if ($departmentSelectorHtml = $userDirectory->display->getDepartmentSelector($userDirectory->department)) {
             echo get_string('filter_before_department', 'block_user_directory');
             echo $departmentSelectorHtml;
@@ -334,11 +328,16 @@ if ($results->totalcount < 1) {
             $thisuserisparent = $userDirectory->isParent($user);
             $thisuserisstudent = $userDirectory->isStudent($user);
             $thisuseristeacher = $userDirectory->isTeacher($user);
-
-            // Don't show parents to students or other parents
-            if ($thisuserisparent && ($viewinguserisstudent || $viewinguserisparent)) {
+/*
+            // Only show parents to teachers
+            if ($thisuserisparent && !$userDirectory->viewinguseristeacher) {
                 continue;
             }
+
+            // Parents can only see teachers
+            if ($userDirectory->viewinguserisparent && !$thisuseristeacher) {
+                continue;
+            } */
 
             echo '<tr>';
 
@@ -346,7 +345,23 @@ if ($results->totalcount < 1) {
                 echo '<td>' . $OUTPUT->user_picture($user, array('size' => 80, 'courseid' => $course->id)) . '</td>';
 
 
-                echo '<td>' . fullname($user, has_capability('moodle/site:viewfullnames', $context)) . '</td>';
+                echo '<td>';
+
+                    if ($thisuserisparent) {
+                        echo '<i class="fa fa-users"></i> ';
+                    }
+
+                    if ($thisuseristeacher) {
+                        echo '<i class="fa fa-magic"></i> ';
+                    }
+
+                    if ($thisuserisstudent) {
+                        echo '<i class="fa fa-child"></i> ';
+                    }
+
+                    echo fullname($user, has_capability('moodle/site:viewfullnames', $context));
+
+                echo '</td>';
 
                 echo '<td>';
                 //Email address field
@@ -364,7 +379,7 @@ if ($results->totalcount < 1) {
 
                 }
 
-                if ($thisuserisstudent && $viewinguseristeacher) {
+                if ($thisuserisstudent && $userDirectory->viewinguseristeacher) {
 
                     // Show their parent's email address
                     $parent_email_address = $user->username . "PARENTS@student.ssis-suzhou.net";
@@ -372,7 +387,7 @@ if ($results->totalcount < 1) {
 
                 }
 
-                if ($thisuserisstudent && $viewinguseristeacher && $user->department >= 6) {
+                if ($thisuserisstudent && $userDirectory->viewinguseristeacher && $user->department >= 6) {
 
                     // Show the address to bulk email all the student's teachers
                     $teachers_email_address = $user->username . "TEACHERS@student.ssis-suzhou.net";
@@ -380,7 +395,7 @@ if ($results->totalcount < 1) {
 
                 }
 
-                if ($thisuserisstudent && $viewinguseristeacher && $user->department >= 6) {
+                if ($thisuserisstudent && $userDirectory->viewinguseristeacher && $user->department >= 6) {
 
                     // Show their homeroom teacher's email address
                     $hr_email_address = $user->username . "HR@student.ssis-suzhou.net";
