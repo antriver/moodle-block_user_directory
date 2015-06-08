@@ -27,8 +27,11 @@ $string['andor'] = 'and/or';
 $string['allroles'] = '[All Roles]';
 $string['allcourses'] = '[All Courses]';
 $string['allgroups'] = '[Any Group]';
-$string['filter_role'] = 'Show every ';
-$string['filter_role_course_separator'] = ' in ';
+$string['alldepartments'] = '[Any Homeroom]';
+
+$string['filter_before_role'] = 'Show every ';
+$string['filter_before_department'] = ' from ';
+$string['filter_before_course'] = ' in ';
 
 $string['search_for'] = 'Search for ';
 $string['search_in'] = ' in ';

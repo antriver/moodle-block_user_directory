@@ -15,24 +15,24 @@ use single_select;
 
 class DisplayManager
 {
-    private $userDirectory;
+    private $userdirectory;
 
-    public function __construct(UserDirectory $userDirectory)
+    public function __construct(UserDirectory $userdirectory)
     {
-        $this->userDirectory = $userDirectory;
+        $this->userdirectory = $userdirectory;
     }
 
     public function getPageTitle()
     {
-        return $this->userDirectory->getString('page_title');
+        return $this->userdirectory->getString('page_title');
     }
 
     public function getSearchForm()
     {
-        $course = $this->userDirectory->getCourse();
-        $search = $this->userDirectory->search;
-        $searchin = $this->userDirectory->searchin;
-        $roleid = $this->userDirectory->roleid;
+        $course = $this->userdirectory->getCourse();
+        $search = $this->userdirectory->search;
+        $searchin = $this->userdirectory->searchin;
+        $roleid = $this->userdirectory->roleid;
 
         // !Search box above user list
         $searchBox = '<form action="index.php" class="search-form form form-inline">
@@ -67,7 +67,7 @@ class DisplayManager
         JOIN {course} crs ON crs.id = ct.instanceid
         WHERE ra.userid = ?';
 
-        if ($categoryCtx = $this->userDirectory->getCategoryContext()) {
+        if ($categoryCtx = $this->userdirectory->getCategoryContext()) {
             $path = $categoryCtx->path . '/%';
             $sql .= " AND ct.path LIKE ?";
             $values[] = $path;
@@ -83,7 +83,7 @@ class DisplayManager
         return $DB->get_records_sql($sql, $values);
     }
 
-    public function getCourseSelector($selectedCourseId = null)
+    public function getCourseSelector($selectedcourseid = null)
     {
         global $OUTPUT, $USER, $DB;
 
@@ -97,15 +97,68 @@ class DisplayManager
 
         asort($courselist);
 
-        $directoryCourse = get_course($this->userDirectory->getConfig('courseid'));
+        $directoryCourse = get_course($this->userdirectory->getConfig('courseid'));
 
         $courselist = array(
             $directoryCourse->id => $directoryCourse->fullname
         ) + $courselist;
 
         // Create the <select>
-        $filter_by_course_url = new moodle_url('/blocks/user_directory/?roleid=' . $this->userDirectory->roleid . '&sifirst=&silast=');
-        $select = new single_select($filter_by_course_url, 'courseid', $courselist, $selectedCourseId, null, 'courseform');
+        $url = $this->userdirectory->getBaseUrl('courseid');
+        $select = new single_select($url, 'courseid', $courselist, $selectedcourseid, null, 'courseform');
+
+        return $OUTPUT->render($select);
+
+    }
+
+    public function getDepartmentSelector($selectedepartment = null)
+    {
+        global $OUTPUT, $USER, $DB;
+
+        // Get departments
+        $departments = array();
+        $rows = $DB->get_records_sql('SELECT UPPER(department) AS department FROM {user} GROUP BY UPPER(department) ORDER BY department');
+        foreach ($rows as $row) {
+            if ($row->department && preg_match('/^\d+/', $row->department)) {
+                $departments[$row->department] = $row->department;
+            }
+        }
+
+        // Sort by digits at the start of homeroom
+        uasort($departments, function($a, $b) {
+
+            $yearA = intval($a);
+            $yearB = intval($b);
+
+            $hrA = substr($a, strlen($yearA));
+            $hrB = substr($b, strlen($yearB));
+
+            if ($yearA === $yearB && $yearA < 6) {
+
+                return $hrA > $hrB;
+
+            } elseif ($yearA === $yearB) {
+
+                $order = array('L', 'E', 'A', 'R', 'N', 'S', 'JS', 'SWA');
+
+                if (!in_array($hrB, $order)) {
+                    return $hrA > $hrB;
+                } else {
+                    return array_search($hrA, $order) > array_search($hrB, $order);
+                }
+
+            } else {
+                return $yearA > $yearB;
+            }
+        });
+
+        $departments = array(
+            0 => get_string('alldepartments', 'block_user_directory')
+        ) + $departments;
+
+        // Create the <select>
+        $url = $this->userdirectory->getBaseUrl('department');
+        $select = new single_select($url, 'department', $departments, $selectedepartment, null, 'departmentform');
 
         return $OUTPUT->render($select);
 
@@ -117,9 +170,7 @@ class DisplayManager
     public function getRoleSelector($selectedRoleId)
     {
         global $CFG, $OUTPUT;
-        $context = $this->userDirectory->getContext();
-
-        $rolenamesurl = new moodle_url('/blocks/user_directory/?courseid=' . $this->userDirectory->courseid . '&sifirst=&silast=');
+        $context = $this->userdirectory->getContext();
 
         $rolenames = role_fix_names(get_profile_roles($context), $context, \ROLENAME_ALIAS, true);
 
@@ -144,7 +195,8 @@ class DisplayManager
         // If there are multiple roles in the course, then show a drop down menu for switching
         if (count($rolenames) > 1) {
 
-            $html = $OUTPUT->single_select($rolenamesurl, 'roleid', $rolenames, $selectedRoleId, null, 'rolesform');
+            $url = $this->userdirectory->getBaseUrl('roleid');
+            $html = $OUTPUT->single_select($url, 'roleid', $rolenames, $selectedRoleId, null, 'rolesform');
 
         } else if (count($rolenames) == 1) {
             // when all users with the same role - print its name
@@ -193,7 +245,7 @@ class DisplayManager
             }
         }
 
-        $url = new moodle_url('/blocks/user_directory/?roleid=' . $this->userDirectory->roleid . '&courseid=' . $this->userDirectory->courseid . '&sifirst=&silast=');
+        $url = new moodle_url('/blocks/user_directory/?roleid=' . $this->userdirectory->roleid . '&courseid=' . $this->userdirectory->courseid . '&sifirst=&silast=');
 
         if (count($groupsmenu) == 1) {
             $groupname = reset($groupsmenu);
@@ -208,7 +260,7 @@ class DisplayManager
 
     public function getLetterBar($firstinitial, $lastinitial)
     {
-        $baseurl = $this->userDirectory->getBaseUrl();
+        $baseurl = $this->userdirectory->getBaseUrl();
         $strall = get_string('all');
         $alpha  = explode(',', get_string('alphabet', 'langconfig'));
 
@@ -258,7 +310,7 @@ class DisplayManager
         global $OUTPUT;
 
         // Bar of page numbers
-        $pagingbar = new paging_bar($matchcount, intval($pagestart / $this->userDirectory->perpage), $this->userDirectory->perpage, $this->userDirectory->getBaseUrl());
+        $pagingbar = new paging_bar($matchcount, intval($pagestart / $this->userdirectory->perpage), $this->userdirectory->perpage, $this->userdirectory->getBaseUrl());
         $pagingbar->pagevar = 'spage';
         return $OUTPUT->render($pagingbar);
     }

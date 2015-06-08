@@ -47,7 +47,7 @@ $isseparategroups = ($course->groupmode == SEPARATEGROUPS and !has_capability('m
  */
 require_login($course);
 
-$PAGE->set_url('/blocks/user_directory/', $userDirectory->getUrlParams());
+$PAGE->set_url($userDirectory->getBaseUrl());
 $PAGE->set_title($userDirectory->display->getPageTitle());
 $PAGE->set_heading($userDirectory->display->getPageTitle());
 
@@ -93,11 +93,18 @@ if (has_capability('moodle/course:viewhiddenuserfields', $context)) {
  */
 echo '<h2 class="user-directory-title text-center">';
 
-    echo get_string('filter_role', 'block_user_directory');
+    echo get_string('filter_before_role', 'block_user_directory');
     echo $userDirectory->display->getRoleSelector($userDirectory->roleid);
 
+    if (!$userDirectory->roleid || $userDirectory->roleid == 5) {
+        if ($departmentSelectorHtml = $userDirectory->display->getDepartmentSelector($userDirectory->department)) {
+            echo get_string('filter_before_department', 'block_user_directory');
+            echo $departmentSelectorHtml;
+        }
+    }
+
     if ($courseSelectorHtml = $userDirectory->display->getCourseSelector($userDirectory->courseid)) {
-        echo get_string('filter_role_course_separator', 'block_user_directory');
+        echo '<span id="departmentform_before">' . get_string('filter_before_course', 'block_user_directory') . '</span>';
         echo $courseSelectorHtml;
 
         if ($groupSelectorHtml = $userDirectory->display->getGroupSelector($course)) {

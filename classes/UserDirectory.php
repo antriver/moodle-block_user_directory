@@ -33,6 +33,7 @@ class UserDirectory
     public $searchin;
     public $roleid;
     public $courseid;
+    public $department;
 
     public $display = null;
 
@@ -87,30 +88,37 @@ class UserDirectory
         // One of this or.
         //$this->contextid = optional_param('contextid', 0, \PARAM_INT);
 
-        // This are required.
         $this->courseid = optional_param('courseid', $this->getConfig('courseid'), PARAM_INT);
+
+        $this->department = optional_param('department', '', \PARAM_RAW);
     }
 
-    public function getUrlParams()
+    /**
+     * Get the URL for the current filter selection. (Resets page and letter filters to the default/all)
+     * @param  string $skipkey          Don't put this key from the params in the url (useful for making a url for a <select>)
+     * @param  array  $additionalparams
+     * @return moodle_url
+     */
+    public function getBaseUrl($skipkey = null, $additionalparams = array())
     {
-        return array(
+        $params = [
             'courseid' => $this->courseid,
-            'roleid' => $this->roleid,
-            'search' => $this->search,
-            'perpage' => $this->perpage,
-
-            'page' => $this->page,
-        );
-    }
-
-    public function getBaseUrl()
-    {
-        return new moodle_url('/blocks/user_directory/', array(
-            'courseid' => $this->courseid,
+            'department' => $this->department,
+            'page' => '',
             'roleid' => $this->roleid,
             'search' => s($this->search),
-            'perpage' => $this->perpage,
-        ));
+            'searchin' => $this->searchin,
+            'sifirst' => '',
+            'silast' => '',
+        ];
+
+        $params = array_merge($params, $additionalparams);
+
+        if ($skipkey) {
+            unset($params[$skipkey]);
+        }
+
+        return new moodle_url('/blocks/user_directory/', $params);
     }
 
     public function logView()
@@ -247,6 +255,11 @@ class UserDirectory
             $contextlist = implode(',', $contextlist);
             $wheres[] = "u.id IN (SELECT userid FROM {role_assignments} WHERE roleid = :roleid AND contextid IN ($contextlist))";
             $params['roleid'] = $this->roleid;
+        }
+
+        if ($this->department) {
+            $wheres[] = "u.department = :department";
+            $params['department'] = $this->department;
         }
 
         $from = implode("\n", $joins);
