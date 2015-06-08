@@ -272,16 +272,19 @@ if ($results->totalcount < 1) {
     // If we're showing the users in a specific class, and the viewing user is a teacher, print out the class emails:
     // (Any teacher. Not specifically a teacher of this class)
 
-    if ($currentgroup && $viewinguseristeacher) {
-        // FIXME: SSIS
-        $groupname = groups_get_group_name($currentgroup);
-        echo '<br /><strong><i class="icon-user"></i> Bulk email for all students in this class:</strong><br />';
-        $emailaddr = $groupname.'@student.ssis-suzhou.net';
-        echo '<a href="mailto:'.$emailaddr.'">'.$emailaddr.'</a><br />';
+    if ($currentgroup && $userDirectory->viewinguseristeacher) {
+        echo '<div class="alert alert-info text-center">';
 
-        echo '<br /><strong><i class="icon-female"></i> Bulk email for all parents who have a child in this class:</strong><br />';
+        $groupname = groups_get_group_name($currentgroup);
+        echo '<p><i class="fa fa-child"></i> Bulk email for all students in this class:<br/>';
+        $emailaddr = $groupname.'@student.ssis-suzhou.net';
+        echo '<a href="mailto:'.$emailaddr.'">'.$emailaddr.'</a></p>';
+
+        echo '<p><i class="fa fa-users"></i> Bulk email for all parents who have a child in this class:<br/>';
         $emailaddr = $groupname.'PARENTS@student.ssis-suzhou.net';
-        echo '<a href="mailto:?bcc='.$emailaddr.'">'.$emailaddr.'</a><br /><br />';
+        echo '<a href="mailto:?bcc='.$emailaddr.'">'.$emailaddr.'</a></p>';
+
+        echo '</div>';
     }
 
 
