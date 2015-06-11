@@ -16,7 +16,7 @@ $string['settings_courseid_name'] = 'Directory Course';
 $string['settings_courseid_desc'] = 'Select a course that will be used for the directory. Enrol users into this course to display them in the directory.';
 
 $string['settings_course_category_name'] = 'Course Category';
-$string['settings_course_category_desc'] = 'Only show courses from this category in the homework diary.';
+$string['settings_course_category_desc'] = 'Only show courses from this category in the directory.';
 
 // Capabilities
 $string['user_directory:addinstance'] = 'Add a user directory block';
