@@ -398,7 +398,7 @@ if ($results->totalcount < 1) {
                 if ($thisuserisstudent && $userDirectory->viewinguseristeacher && $user->department >= 6) {
 
                     // Show their homeroom teacher's email address
-                    $hr_email_address = $user->username . "HR@student.ssis-suzhou.net";
+                    $hr_email_address = $user->username . "HROOM@student.ssis-suzhou.net";
                     echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link("mailto:$hr_email_address", $hr_email_address);
 
                 }
