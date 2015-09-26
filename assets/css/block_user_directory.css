@@ -92,7 +92,7 @@
 
 }
 
-.user-directory .userpicture {
+.user-directory #page-content .userpicture {
     width:80px;
     height:80px;
 }
