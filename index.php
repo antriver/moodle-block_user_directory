@@ -271,11 +271,11 @@ if ($results->totalcount < 1) {
 
         $groupname = groups_get_group_name($currentgroup);
         echo '<p><i class="fa fa-child"></i> Bulk email for all students in this class:<br/>';
-        $emailaddr = $groupname.'@student.ssis-suzhou.net';
+        $emailaddr = 'usebcc'.$groupname.'@student.ssis-suzhou.net';
         echo '<a href="mailto:'.$emailaddr.'">'.$emailaddr.'</a></p>';
 
         echo '<p><i class="fa fa-users"></i> Bulk email for all parents who have a child in this class:<br/>';
-        $emailaddr = $groupname.'PARENTS@student.ssis-suzhou.net';
+        $emailaddr = 'usebcc'.$groupname.'PARENTS@student.ssis-suzhou.net';
         echo '<a href="mailto:?bcc='.$emailaddr.'">'.$emailaddr.'</a></p>';
 
         echo '</div>';
