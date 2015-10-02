@@ -270,12 +270,14 @@ if ($results->totalcount < 1) {
         echo '<div class="alert alert-info text-center">';
 
         $groupname = groups_get_group_name($currentgroup);
+        global $DB;
+        $groupidnumber = $DB->get_field('groups', 'name', array('id'=>$currentgroup));
         echo '<p><i class="fa fa-child"></i> Bulk email for all students in this class:<br/>';
-        $emailaddr = 'usebcc'.$groupname.'@student.ssis-suzhou.net';
+        $emailaddr = 'usebcc'.$groupidnumber.'@student.ssis-suzhou.net';
         echo '<a href="mailto:'.$emailaddr.'">'.$emailaddr.'</a></p>';
 
         echo '<p><i class="fa fa-users"></i> Bulk email for all parents who have a child in this class:<br/>';
-        $emailaddr = 'usebcc'.$groupname.'PARENTS@student.ssis-suzhou.net';
+        $emailaddr = 'usebcc'.$groupidnumber.'PARENTS@student.ssis-suzhou.net';
         echo '<a href="mailto:?bcc='.$emailaddr.'">'.$emailaddr.'</a></p>';
 
         echo '</div>';
