@@ -22,8 +22,7 @@ $courses = $DB->get_records('course', null, 'fullname', 'id, fullname');
 // Moodle loads this page multiple times for some reason
 // Hence the function_eixsts check
 if (!function_exists('return_course_fullname_from_course_object')) {
-    function return_course_fullname_from_course_object($course)
-    {
+    function return_course_fullname_from_course_object($course) {
         return trim($course->fullname);
     }
 }
@@ -31,7 +30,6 @@ if (!function_exists('return_course_fullname_from_course_object')) {
 $courseList = array_map('return_course_fullname_from_course_object', $courses);
 
 asort($courseList);
-
 
 $settings->add(
     new admin_setting_configselect(
@@ -42,7 +40,6 @@ $settings->add(
         $courseList
     )
 );
-
 
 /**
  * Category to show courses from
@@ -69,8 +66,6 @@ $settings->add(
     )
 );
 
-
-
 /**
  * User levels
  */
@@ -85,7 +80,7 @@ $cohortList = array(
 foreach ($cohorts['cohorts'] as $cohort) {
     $cohortList[$cohort->id] = $cohort->name;
     if ($cohort->idnumber) {
-        $cohortList[$cohort->id] .= ' ['.s($cohort->idnumber).']';
+        $cohortList[$cohort->id] .= ' [' . s($cohort->idnumber) . ']';
     }
 }
 

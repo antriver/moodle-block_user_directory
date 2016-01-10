@@ -10,18 +10,15 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-class block_user_directory extends block_base
-{
-    public function init()
-    {
+class block_user_directory extends block_base {
+    public function init() {
         $this->title = get_string('pluginname', 'block_user_directory');
     }
 
     /**
      * Returns the contents when shown in block form
      */
-    public function get_content()
-    {
+    public function get_content() {
         return '';
     }
 
@@ -30,10 +27,9 @@ class block_user_directory extends block_base
      * (We only want to view the block at /blocks/user_directory but something needs
      * to be defined here)
      */
-    public function applicable_formats()
-    {
+    public function applicable_formats() {
         return array(
-            'all' => false,
+            'all'  => false,
             'site' => true,
         );
     }
@@ -41,16 +37,14 @@ class block_user_directory extends block_base
     /**
      * Allow multiple instances of the block on the same page?
      */
-    public function instance_allow_multiple()
-    {
+    public function instance_allow_multiple() {
         return false;
     }
 
     /**
      * Does the block have admin settings?
      */
-    public function has_config()
-    {
+    public function has_config() {
         return true;
     }
 }

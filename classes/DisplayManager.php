@@ -14,22 +14,18 @@ use moodle_url;
 use paging_bar;
 use single_select;
 
-class DisplayManager
-{
+class DisplayManager {
     private $userdirectory;
 
-    public function __construct(UserDirectory $userdirectory)
-    {
+    public function __construct(UserDirectory $userdirectory) {
         $this->userdirectory = $userdirectory;
     }
 
-    public function getPageTitle()
-    {
+    public function getPageTitle() {
         return $this->userdirectory->getString('page_title');
     }
 
-    public function getSearchForm()
-    {
+    public function getSearchForm() {
         $course = $this->userdirectory->getCourse();
         $search = $this->userdirectory->search;
         $searchin = $this->userdirectory->searchin;
@@ -39,10 +35,13 @@ class DisplayManager
         $searchBox = '<form action="index.php" class="search-form form form-inline">
             <input type="hidden" name="courseid" value="' . $course->id . '" />
             <input type="hidden" name="role" value="' . $role . '" />
-            <label for="search">' . get_string('search_for', 'block_user_directory'). '</label>
-            <input type="text" id="search" name="search" value="' . s($search) . '" /> ' . get_string('search_in', 'block_user_directory') . '
+            <label for="search">' . get_string('search_for', 'block_user_directory') . '</label>
+            <input type="text" id="search" name="search" value="' . s($search) . '" /> ' . get_string(
+                'search_in',
+                'block_user_directory') . '
             <select name="searchin">
-                <option value="" ' . (!$searchin ? 'selected' : '') . '>' . get_string('name') .', ' . get_string('email') . ', ' . get_string('andor', 'block_user_directory') . ' ' . get_string('department') .'</option>
+                <option value="" ' . (!$searchin ? 'selected' : '') . '>' . get_string('name') . ', ' . get_string(
+                'email') . ', ' . get_string('andor', 'block_user_directory') . ' ' . get_string('department') . '</option>
                 <option value="name" ' . ($searchin == 'name' ? 'selected' : '') . '>' . get_string('name') . '</option>
                 <option value="email" ' . ($searchin == 'email' ? 'selected' : '') . '>' . get_string('email') . '</option>
                 <option value="department" ' . ($searchin == 'department' ? 'selected' : '') . '>' . get_string('department') . '</option>
@@ -52,8 +51,7 @@ class DisplayManager
         echo $searchBox;
     }
 
-    private function getUsersCourses($userId, $roleid = null)
-    {
+    private function getUsersCourses($userId, $roleid = null) {
         global $DB;
 
         $values = array(
@@ -84,8 +82,7 @@ class DisplayManager
         return $DB->get_records_sql($sql, $values);
     }
 
-    public function getCourseSelector($selectedcourseid = null)
-    {
+    public function getCourseSelector($selectedcourseid = null) {
         global $OUTPUT, $USER, $DB;
 
         $courses = $this->getUsersCourses($USER->id);
@@ -101,24 +98,23 @@ class DisplayManager
         $directoryCourse = get_course($this->userdirectory->getConfig('courseid'));
 
         $courselist = array(
-            $directoryCourse->id => $directoryCourse->fullname
-        ) + $courselist;
+                $directoryCourse->id => $directoryCourse->fullname
+            ) + $courselist;
 
         // Create the <select>
         $url = $this->userdirectory->getBaseUrl('courseid');
         $select = new single_select($url, 'courseid', $courselist, $selectedcourseid, null, 'courseform');
 
         return $OUTPUT->render($select);
-
     }
 
-    public function getDepartmentSelector($selectedepartment = null)
-    {
+    public function getDepartmentSelector($selectedepartment = null) {
         global $OUTPUT, $USER, $DB;
 
         // Get departments
         $departments = array();
-        $rows = $DB->get_records_sql('SELECT UPPER(department) AS department FROM {user} GROUP BY UPPER(department) ORDER BY department');
+        $rows = $DB->get_records_sql(
+            'SELECT UPPER(department) AS department FROM {user} GROUP BY UPPER(department) ORDER BY department');
         foreach ($rows as $row) {
             if ($row->department && preg_match('/^\d+/', $row->department)) {
                 $departments[$row->department] = $row->department;
@@ -126,53 +122,50 @@ class DisplayManager
         }
 
         // Sort by digits at the start of homeroom
-        uasort($departments, function($a, $b) {
+        uasort(
+            $departments,
+            function ($a, $b) {
 
-            $yearA = intval($a);
-            $yearB = intval($b);
+                $yearA = intval($a);
+                $yearB = intval($b);
 
-            $hrA = substr($a, strlen($yearA));
-            $hrB = substr($b, strlen($yearB));
+                $hrA = substr($a, strlen($yearA));
+                $hrB = substr($b, strlen($yearB));
 
-            if ($yearA === $yearB && $yearA < 6) {
+                if ($yearA === $yearB && $yearA < 6) {
 
-                return $hrA > $hrB;
-
-            } elseif ($yearA === $yearB) {
-
-                $order = array('L', 'E', 'A', 'R', 'N', 'S', 'JS', 'SWA');
-
-                if (!in_array($hrB, $order)) {
                     return $hrA > $hrB;
-                } else {
-                    return array_search($hrA, $order) > array_search($hrB, $order);
-                }
+                } elseif ($yearA === $yearB) {
 
-            } else {
-                return $yearA > $yearB;
-            }
-        });
+                    $order = array('L', 'E', 'A', 'R', 'N', 'S', 'JS', 'SWA');
+
+                    if (!in_array($hrB, $order)) {
+                        return $hrA > $hrB;
+                    } else {
+                        return array_search($hrA, $order) > array_search($hrB, $order);
+                    }
+                } else {
+                    return $yearA > $yearB;
+                }
+            });
 
         $departments = array(
-            0 => get_string('alldepartments', 'block_user_directory')
-        ) + $departments;
+                0 => get_string('alldepartments', 'block_user_directory')
+            ) + $departments;
 
         // Create the <select>
         $url = $this->userdirectory->getBaseUrl('department');
         $select = new single_select($url, 'department', $departments, $selectedepartment, null, 'departmentform');
 
         return $OUTPUT->render($select);
-
     }
-
 
     /**
      * Returns the HTML to display the role selector
      *
      * We build the list of possible roles
      */
-    public function getRoleSelector($selectedRole)
-    {
+    public function getRoleSelector($selectedRole) {
         global $CFG, $OUTPUT;
 
         $visibleRoles = $this->userdirectory->getVisibleRoles();
@@ -192,9 +185,11 @@ class DisplayManager
      * Print group menu selector for course level.
      *
      * @category group
-     * @param stdClass $course course object
-     * @param mixed $urlroot return address. Accepts either a string or a moodle_url
-     * @param bool $return return as string instead of printing
+     *
+     * @param stdClass $course  course object
+     * @param mixed    $urlroot return address. Accepts either a string or a moodle_url
+     * @param bool     $return  return as string instead of printing
+     *
      * @return mixed void or string depending on $return param
      */
     function getGroupSelector($course) {
@@ -239,65 +234,66 @@ class DisplayManager
         return $output;
     }
 
-    public function getLetterBar($firstinitial, $lastinitial)
-    {
+    public function getLetterBar($firstinitial, $lastinitial) {
         $baseurl = $this->userdirectory->getBaseUrl();
         $strall = get_string('all');
-        $alpha  = explode(',', get_string('alphabet', 'langconfig'));
+        $alpha = explode(',', get_string('alphabet', 'langconfig'));
 
         $html = '';
 
         // Bar of first initials
         $html .= '<div class="initialbar firstinitial paging"><span>' . get_string('firstname') . ':</span>';
-            //'All' button
-            if(!empty($firstinitial)) {
-                $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;sifirst=">' . $strall . '</a>';
+        //'All' button
+        if (!empty($firstinitial)) {
+            $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;sifirst=">' . $strall . '</a>';
+        } else {
+            $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;sifirst=">' . $strall . '</a>';
+        }
+        //Show each letter
+        foreach ($alpha as $letter) {
+            if ($letter == $firstinitial) {
+                $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;sifirst=' . $letter . '">' . $letter . '</a>';
             } else {
-                $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;sifirst=">' . $strall . '</a>';
+                $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;sifirst=' . $letter . '">' . $letter . '</a>';
             }
-            //Show each letter
-            foreach ($alpha as $letter) {
-                if ($letter == $firstinitial) {
-                    $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;sifirst=' . $letter . '">' . $letter . '</a>';
-                } else {
-                    $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;sifirst=' . $letter . '">' . $letter . '</a>';
-                }
-            }
+        }
         $html .= '</div>';
 
         // Bar of last initials
         $html .= '<div class="initialbar lastinitial paging"><span>' . get_string('lastname') . ':</span>';
-            //'All' button
-            if(!empty($lastinitial)) {
-                $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;silast=">' . $strall . '</a>';
+        //'All' button
+        if (!empty($lastinitial)) {
+            $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;silast=">' . $strall . '</a>';
+        } else {
+            $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;silast=">' . $strall . '</a>';
+        }
+        //Show each letter
+        foreach ($alpha as $letter) {
+            if ($letter == $lastinitial) {
+                $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;silast=' . $letter . '">' . $letter . '</a>';
             } else {
-                $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;silast=">' . $strall . '</a>';
+                $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;silast=' . $letter . '">' . $letter . '</a>';
             }
-            //Show each letter
-           foreach ($alpha as $letter) {
-                if ($letter == $lastinitial) {
-                    $html .= '<a class="btn selected active" href="' . $baseurl->out() . '&amp;silast=' . $letter . '">' . $letter . '</a>';
-                } else {
-                    $html .= '<a class="btn" href="' . $baseurl->out() . '&amp;silast=' . $letter . '">' . $letter . '</a>';
-                }
-            }
+        }
         $html .= '</div>';
 
         return $html;
     }
 
-    public function getPagingBar($matchcount, $pagestart)
-    {
+    public function getPagingBar($matchcount, $pagestart) {
         global $OUTPUT;
 
         // Bar of page numbers
-        $pagingbar = new paging_bar($matchcount, intval($pagestart / $this->userdirectory->perpage), $this->userdirectory->perpage, $this->userdirectory->getBaseUrl());
+        $pagingbar = new paging_bar(
+            $matchcount,
+            intval($pagestart / $this->userdirectory->perpage),
+            $this->userdirectory->perpage,
+            $this->userdirectory->getBaseUrl());
         $pagingbar->pagevar = 'spage';
         return $OUTPUT->render($pagingbar);
     }
 
-    public function getString($key)
-    {
+    public function getString($key) {
         return get_string($key, 'block_user_directory');
     }
 }
