@@ -50,10 +50,20 @@ class UserDirectory
      */
     public $silast;
 
-    public $display = null;
+    /**
+     * @var DisplayManager
+     */
+    public $display;
 
-    private $course = null;
-    private $context = null;
+    /**
+     * @var \stdClass
+     */
+    private $course;
+
+    /**
+     * @var context_course
+     */
+    private $context;
 
     public $viewinguserisparent = null;
     public $viewinguserisstudent = null;
@@ -357,7 +367,7 @@ class UserDirectory
                 case 'email':
                 case 'department':
                     //Add 'where' to query
-                    $wheres[] = $DB->sql_like( $searchin , ':search' , false, false);
+                    $wheres[] = $DB->sql_like( $this->searchin , ':search' , false, false);
                     $params['search'] = "%{$this->search}%";
                 break;
 
