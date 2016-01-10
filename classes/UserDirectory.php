@@ -36,6 +36,20 @@ class UserDirectory
     public $courseid;
     public $department;
 
+    /**
+     * First name letter filter
+     *
+     * @var string
+     */
+    public $sifirst;
+
+    /**
+     * Last name letter filter
+     *
+     * @var string
+     */
+    public $silast;
+
     public $display = null;
 
     private $course = null;
@@ -75,22 +89,22 @@ class UserDirectory
     private function loadUrlParams()
     {
         // Page number
-        $this->page = optional_param('page', 0, \PARAM_INT);
+        $this->page = optional_param('page', 0, PARAM_INT);
 
         // How many per page
-        $this->perpage = optional_param('perpage', $this->perpage, \PARAM_INT);
+        $this->perpage = optional_param('perpage', $this->perpage, PARAM_INT);
 
         // Use the MODE_ constants.
-        $this->mode = optional_param('mode', null, \PARAM_INT);
+        $this->mode = optional_param('mode', null, PARAM_INT);
 
         // Filter by last access. -1 = never.
-        $this->accesssince = optional_param('accesssince', 0, \PARAM_INT);
+        $this->accesssince = optional_param('accesssince', 0, PARAM_INT);
 
         // Make sure it is processed with p() or s() when sending to output!
-        $this->search = optional_param('search', '', \PARAM_RAW);
-        $this->searchin = optional_param('searchin', '', \PARAM_RAW);
+        $this->search = optional_param('search', '',  PARAM_RAW);
+        $this->searchin = optional_param('searchin', '',  PARAM_RAW);
 
-        $this->role = optional_param('role', 'all', \PARAM_RAW);
+        $this->role = optional_param('role', 'all',  PARAM_RAW);
 
         $visibleRoles = $this->getVisibleRoles();
         if (!isset($visibleRoles[$this->role])) {
@@ -100,10 +114,13 @@ class UserDirectory
 
         $this->courseid = optional_param('courseid', $this->getConfig('courseid'), PARAM_INT);
 
-        $this->department = optional_param('department', '', \PARAM_RAW);
+        $this->department = optional_param('department', '',  PARAM_RAW);
         if ($this->role !== 'students') {
             $this->department = '';
         }
+
+        $this->sifirst = optional_param('sifirst', '', PARAM_RAW);
+        $this->silast = optional_param('silast', '', PARAM_RAW);
     }
 
     /**
@@ -121,8 +138,8 @@ class UserDirectory
             'role' => $this->role,
             'search' => s($this->search),
             'searchin' => $this->searchin,
-            'sifirst' => '',
-            'silast' => '',
+            'sifirst' => $this->sifirst,
+            'silast' => $this->silast,
         ];
 
         $params = array_merge($params, $additionalparams);
