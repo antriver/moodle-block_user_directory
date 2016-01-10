@@ -15,8 +15,15 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Form for adding a new user directory instance
- * (Not used since we don't support adding the block as a block)
+ * Form for adding a new user directory block instance.
+ *
+ * @package   block_user_directory
+ * @copyright Anthony Kuske <www.anthonykuske.com> and Adam Morris <www.mistermorris.com>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/**
+ * Form for adding a new user directory block instance. (Not used since we don't yet support adding the directory as a block)
  *
  * @package   block_user_directory
  * @copyright Anthony Kuske <www.anthonykuske.com> and Adam Morris <www.mistermorris.com>
@@ -24,6 +31,13 @@
  */
 class block_user_directory_edit_form extends block_edit_form {
 
+    /**
+     * Create any form fields specific to this type of block.
+     *
+     * @param object $mform
+     *
+     * @throws coding_exception
+     */
     protected function specific_definition($mform) {
 
         // Section header title according to language file.

@@ -15,38 +15,119 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
+ * Data access methods for user directory.
+ *
  * @package    block_user_directory
  * @copyright  Anthony Kuske <www.anthonykuske.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace block_user_directory;
+namespace block_user_directory\local;
 
+use core\event\user_list_viewed;
 use Exception;
-use PDO;
+use flexible_table;
 use context_course;
 use context_coursecat;
 use context_helper;
 use moodle_url;
+use stdClass;
 
-class UserDirectory {
-    const USER_SMALL_CLASS = 20;   // Below this is considered small.
-    const USER_LARGE_CLASS = 200;  // Above this is considered large.
-    const DEFAULT_PAGE_SIZE = 20;
-    const SHOW_ALL_PAGE_SIZE = 5000;
+/**
+ * Data access methods for user directory.
+ *
+ * @package    block_user_directory
+ * @copyright  Anthony Kuske <www.anthonykuske.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class user_directory {
+
+    /**
+     * Show the page with minimal details.
+     */
     const MODE_BRIEF = 0;
+
+    /**
+     * Show the page with full details.
+     */
     const MODE_USERDETAILS = 1;
 
-    // URL parameters
+    /**
+     * Curent page number
+     *
+     * @var int
+     */
     public $page;
-    public $perpage = self::DEFAULT_PAGE_SIZE;
+
+    /**
+     * How many users to display per page
+     *
+     * @var int
+     */
+    public $perpage = 20;
+
+    /**
+     * @var string
+     */
     public $mode;
+
+    /**
+     * @var int
+     */
     public $accesssince;
+
+    /**
+     * Search query
+     *
+     * @var string
+     */
     public $search;
+
+    /**
+     * Fields to look for search query in
+     *
+     * @var string
+     */
     public $searchin;
+
+    /**
+     * Role filter (Everybody/Students/Teachers/Parents)
+     *
+     * @var string
+     */
     public $role;
+
+    /**
+     * Role IDs to filter to
+     *
+     * @var int[]
+     */
     public $roleids;
+
+    /**
+     * Course ID to display users from
+     *
+     * @var int
+     */
     public $courseid;
+
+    /**
+     * @var \stdClass
+     */
+    private $course;
+
+    /**
+     * Context instance (derived from $this->courseid)
+     *
+     * @var context_course
+     */
+    private $context;
+
+    /**
+     * TODO: Is this still used?
+     *
+     * @var string
+     */
     public $department;
 
     /**
@@ -64,53 +145,69 @@ class UserDirectory {
     public $silast;
 
     /**
-     * @var DisplayManager
+     * @var display_manager
      */
     public $display;
 
     /**
-     * @var \stdClass
+     * @var bool|null
      */
-    private $course;
+    public $viewinguserisparent = null;
 
     /**
-     * @var context_course
+     * @var bool|null
      */
-    private $context;
-
-    public $viewinguserisparent = null;
     public $viewinguserisstudent = null;
+
+    /**
+     * @var bool|null
+     */
     public $viewinguseristeacher = null;
 
-    function __construct() {
+    /**
+     * Constructor.
+     *
+     * @throws \required_capability_exception
+     */
+    public function __construct() {
         global $CFG, $USER;
 
-        require_once $CFG->dirroot . '/cohort/lib.php';
-        $this->viewinguserisparent = $this->isParent($USER);
-        $this->viewinguserisstudent = $this->isStudent($USER);
-        $this->viewinguseristeacher = $this->isTeacher($USER);
+        require_once($CFG->dirroot . '/cohort/lib.php');
+        $this->viewinguserisparent = $this->is_parent($USER);
+        $this->viewinguserisstudent = $this->is_student($USER);
+        $this->viewinguseristeacher = $this->is_teacher($USER);
 
-        $this->display = new DisplayManager($this);
+        $this->display = new display_manager($this);
 
-        $this->loadUrlParams();
-        $this->loadCourse();
+        $this->load_url_params();
+        $this->load_course();
 
         require_capability('moodle/course:viewparticipants', $this->context);
     }
 
-    public function getString($key, $param = null) {
-        return get_string($key, 'block_user_directory', $param);
-    }
-
-    public function getConfig($key) {
+    /**
+     * Shortcut to get a config valid for the plugin.
+     *
+     * @param string $key
+     *
+     * @return mixed
+     * @throws Exception
+     * @throws \dml_exception
+     */
+    public function get_config($key) {
         return get_config('block_user_directory', $key);
     }
 
-    private function loadUrlParams() {
-        // Page number
+    /**
+     * Load the parameters from the query string into the instance variables.
+     *
+     * @throws \coding_exception
+     */
+    private function load_url_params() {
+        // Page number.
         $this->page = optional_param('page', 0, PARAM_INT);
 
-        // How many per page
+        // How many per page.
         $this->perpage = optional_param('perpage', $this->perpage, PARAM_INT);
 
         // Use the MODE_ constants.
@@ -125,13 +222,13 @@ class UserDirectory {
 
         $this->role = optional_param('role', 'all', PARAM_RAW);
 
-        $visibleRoles = $this->getVisibleRoles();
-        if (!isset($visibleRoles[$this->role])) {
-            $this->role = array_keys($visibleRoles)[0];
+        $visibleroles = $this->get_visible_roles();
+        if (!isset($visibleroles[$this->role])) {
+            $this->role = array_keys($visibleroles)[0];
         }
-        $this->roleids = $visibleRoles[$this->role];
+        $this->roleids = $visibleroles[$this->role];
 
-        $this->courseid = optional_param('courseid', $this->getConfig('courseid'), PARAM_INT);
+        $this->courseid = optional_param('courseid', $this->get_config('courseid'), PARAM_INT);
 
         $this->department = optional_param('department', '', PARAM_RAW);
         if ($this->role !== 'students') {
@@ -143,18 +240,18 @@ class UserDirectory {
     }
 
     /**
-     * Get the URL for the current filter selection. (Resets page and letter filters to the default/all)
+     * Get the URL for the current filter selection, and page.
      *
      * @param  string $skipkey Don't put this key from the params in the url (useful for making a url for a <select>)
      * @param  array  $additionalparams
      *
      * @return moodle_url
      */
-    public function getBaseUrl($skipkey = null, $additionalparams = array()) {
+    public function get_current_url($skipkey = null, $additionalparams = array()) {
         $params = [
             'courseid'   => $this->courseid,
             'department' => $this->department,
-            'page'       => '',
+            'page'       => $this->page,
             'role'       => $this->role,
             'search'     => s($this->search),
             'searchin'   => $this->searchin,
@@ -171,9 +268,14 @@ class UserDirectory {
         return new moodle_url('/blocks/user_directory/', $params);
     }
 
-    public function logView() {
-        // Log a view
-        $event = \core\event\user_list_viewed::create(
+    /**
+     * Log that a user viewed the page.
+     *
+     * @throws \coding_exception
+     * @return null
+     */
+    public function log_view() {
+        $event = user_list_viewed::create(
             array(
                 'objectid' => $this->course->id,
                 'courseid' => $this->course->id,
@@ -186,7 +288,12 @@ class UserDirectory {
         $event->trigger();
     }
 
-    private function loadCourse() {
+    /**
+     * Load the course and context the directory is displaying into $this->course
+     *
+     * @return null
+     */
+    private function load_course() {
         global $DB;
         $this->course = $DB->get_record('course', array('id' => $this->courseid), '*', \MUST_EXIST);
         $this->context = context_course::instance($this->course->id, \MUST_EXIST);
@@ -194,52 +301,94 @@ class UserDirectory {
 
     /**
      * Returns the current selected course
+     *
+     * @return object|null
      */
-    public function getCourse() {
+    public function get_course() {
         if (!is_null($this->course)) {
             return $this->course;
         }
+        return null;
     }
 
-    public function getContext() {
+    /**
+     * Return the current selected course context
+     *
+     * @return context_course|null
+     */
+    public function get_context() {
         if (!is_null($this->context)) {
             return $this->context;
         }
+        return null;
     }
 
-    public function getDirectoryCourse() {
-        return $DB->get_record('course', array('id' => $this->getConfig('courseid')), '*', \MUST_EXIST);
-    }
-
-    public function getDirectoryCourseContext() {
-        return $this->context = context_course::instance($this->getConfig('courseid'), \MUST_EXIST);
-    }
-
-    public function isTeacher($user) {
-        $teacherCohortId = (int)get_config('block_user_directory', 'teacher_cohort');
-        if ($teacherCohortId) {
-            return cohort_is_member($teacherCohortId, $user->id);
+    /**
+     * Is the current logged in user a teacher?
+     *
+     * @param stdClass $user
+     *
+     * @return bool
+     * @throws Exception
+     * @throws \dml_exception
+     */
+    public function is_teacher(stdClass $user) {
+        $teachercohortid = (int)get_config('block_user_directory', 'teacher_cohort');
+        if ($teachercohortid) {
+            return cohort_is_member($teachercohortid, $user->id);
         }
+        return false;
     }
 
-    public function isStudent($user) {
-        $studentCohortId = (int)get_config('block_user_directory', 'student_cohort');
-        if ($studentCohortId) {
-            return cohort_is_member($studentCohortId, $user->id);
+    /**
+     * Is the current logged in user a student?
+     *
+     * @param stdClass $user
+     *
+     * @return bool
+     * @throws Exception
+     * @throws \dml_exception
+     */
+    public function is_student(stdClass $user) {
+        $studentcohortid = (int)get_config('block_user_directory', 'student_cohort');
+        if ($studentcohortid) {
+            return cohort_is_member($studentcohortid, $user->id);
         }
+        return false;
     }
 
-    public function isParent($user) {
-        $parentCohortId = (int)get_config('block_user_directory', 'parent_cohort');
-        if ($parentCohortId) {
-            return cohort_is_member($parentCohortId, $user->id);
+    /**
+     * Is the current logged in user a parent?
+     *
+     * @param stdClass $user
+     *
+     * @return bool
+     * @throws Exception
+     * @throws \dml_exception
+     */
+    public function is_parent(stdClass $user) {
+        $parentcohortid = (int)get_config('block_user_directory', 'parent_cohort');
+        if ($parentcohortid) {
+            return cohort_is_member($parentcohortid, $user->id);
         }
+        return false;
     }
 
-    public function getUsers($table, $currentgroup) {
+    /**
+     * Return the users to populate the table.
+     *
+     * @param flexible_table $table
+     * @param int            $currentgroup
+     *
+     * @return object
+     * @throws Exception
+     * @throws \coding_exception
+     * @throws \dml_exception
+     */
+    public function get_users(flexible_table $table, $currentgroup) {
         global $DB, $USER;
 
-        // We are looking for all users with this role assigned in this context or higher
+        // We are looking for all users with this role assigned in this context or higher.
         $contextlist = $this->context->get_parent_context_ids(true);
 
         list($esql, $params) = get_enrolled_sql($this->context, null, $currentgroup, true);
@@ -266,7 +415,7 @@ class UserDirectory {
                 'lastaccess',
             ));
 
-        // Course users
+        // Course users.
         $select = "SELECT
             u.id,
             u.username,
@@ -292,14 +441,12 @@ class UserDirectory {
             $select .= $extrasql;
         }
 
-        $joins[] = "JOIN ($esql) e ON e.id = u.id"; // course enrolled users only
+        // Enrolled users only.
+        $joins[] = "JOIN ($esql) e ON e.id = u.id";
 
-        //$joins[] = "LEFT JOIN {user_lastaccess} ul ON (ul.userid = u.id AND ul.courseid = :courseid)";
-
-        // not everybody accessed course yet
         $params['courseid'] = $this->course->id;
 
-        // performance hacks - we preload user contexts together with accounts
+        // Performance hacks - we preload user contexts together with accounts.
 
         $ccselect = ', ' . context_helper::get_preload_record_columns_sql('ctx');
         $ccjoin = "LEFT JOIN {context} ctx ON (ctx.instanceid = u.id AND ctx.contextlevel = :contextlevel)";
@@ -308,7 +455,7 @@ class UserDirectory {
         $select .= $ccselect;
         $joins[] = $ccjoin;
 
-        // limit list to users with some role only
+        // Limit list to users with some role only.
 
         $contextlist = implode(',', $contextlist);
         $roleids = implode(',', $this->roleids);
@@ -319,26 +466,41 @@ class UserDirectory {
             $params['department'] = $this->department;
         }
 
-        // Remove non-visible users
-        // For students: Remove everybody but students and teachers
-        // For parents: Remove everybody but teachers
-        $teacherCohortId = (int)get_config('block_user_directory', 'teacher_cohort');
-        $studentCohortId = (int)get_config('block_user_directory', 'student_cohort');
-        $parentCohortId = (int)get_config('block_user_directory', 'parent_cohort');
+        /**
+         * Remove non-visible users
+         * For students: Show only students and teachers
+         * For parents: Show only teachers
+         * For teachers: Show everybody
+         */
+        $teachercohortid = (int)get_config('block_user_directory', 'teacher_cohort');
+        $studentcohortid = (int)get_config('block_user_directory', 'student_cohort');
+        $parentcohortid = (int)get_config('block_user_directory', 'parent_cohort');
 
-        $viewinguserisparent = $this->isParent($USER);
-        $viewinguserisstudent = $this->isStudent($USER);
-        $viewinguseristeacher = $this->isTeacher($USER);
+        $viewinguserisparent = $this->is_parent($USER);
+        $viewinguserisstudent = $this->is_student($USER);
+        $viewinguseristeacher = $this->is_teacher($USER);
 
         if ($viewinguserisparent) {
 
-            $wheres[] = "u.id IN (SELECT userid FROM {cohort_members} WHERE userid = u.id AND cohortid = :teachercohortid)";
-            $params['teachercohortid'] = $teacherCohortId;
-        } elseif ($viewinguserisstudent) {
+            $wheres[] = "u.id IN (
+                SELECT userid FROM {cohort_members}
+                WHERE userid = u.id
+                AND cohortid = :teachercohortid
+                )";
+            $params['teachercohortid'] = $teachercohortid;
+        } else if ($viewinguserisstudent) {
 
-            $wheres[] = "u.id IN (SELECT userid FROM {cohort_members} WHERE userid = u.id AND (cohortid = :teachercohortid OR cohortid = :studentcohortid))";
-            $params['teachercohortid'] = $teacherCohortId;
-            $params['studentcohortid'] = $studentCohortId;
+            $wheres[] = "u.id IN (
+                SELECT userid
+                FROM {cohort_members}
+                WHERE userid = u.id
+                AND (
+                    cohortid = :teachercohortid
+                    OR cohortid = :studentcohortid
+                    )
+                )";
+            $params['teachercohortid'] = $teachercohortid;
+            $params['studentcohortid'] = $studentcohortid;
         }
 
         $from = implode("\n", $joins);
@@ -348,8 +510,10 @@ class UserDirectory {
             $where = "";
         }
 
-        // $totalcount is the total of everybody in this section
-        // $matchcount (below) is the total of users in this section who match the search
+        /**
+         * $totalcount is the total of everybody in this section
+         * $matchcount (below) is the total of users in this section who match the search
+         */
         $totalcount = $DB->count_records_sql("SELECT COUNT(u.id) $from $where", $params);
 
         // Perform a search.
@@ -357,24 +521,22 @@ class UserDirectory {
 
             $fullname = $DB->sql_fullname('u.firstname', 'u.lastname');
 
-            //What columns to search in...
+            // What columns to search in.
             switch ($this->searchin) {
                 case 'name':
-                    //Name is a special case because it's firstname and lastname together
+                    // Name is a special case because it's firstname and lastname together.
                     $wheres[] = $DB->sql_like($fullname, ':search', false, false);
                     $params['search'] = "%{$this->search}%";
                     break;
 
                 case 'email':
                 case 'department':
-                    //Add 'where' to query
                     $wheres[] = $DB->sql_like($this->searchin, ':search', false, false);
                     $params['search'] = "%{$this->search}%";
                     break;
 
                 default:
-                    $searchin = false;
-                    //Default is to search in all 3
+                    // Default is to search in all 3.
                     $wheres[] = "(" . $DB->sql_like($fullname, ':searchname', false, false) .
                         " OR " . $DB->sql_like('email', ':searchemail', false, false) .
                         " OR " . $DB->sql_like('department', ':searchdepartment', false, false) . ") ";
@@ -399,14 +561,18 @@ class UserDirectory {
         }
 
         if ($table->get_sql_sort()) {
-            $sort = ' ORDER BY ' . $table->get_sql_sort();
+
+            /** @var string $sortsql */
+            $sortsql = $table->get_sql_sort();
+
+            $sort = ' ORDER BY ' . $sortsql;
         } else {
             $sort = '';
         }
 
         $matchcount = $DB->count_records_sql("SELECT COUNT(u.id) $from $where", $params);
 
-        // list of users at the current visible page - paging makes it relatively short
+        // List of users at the current visible page - paging makes it relatively short.
         $userlist = $DB->get_recordset_sql(
             "$select $from $where $sort",
             $params,
@@ -422,38 +588,24 @@ class UserDirectory {
 
     /**
      * Return the category ID that the directory is set to work from
+     *
+     * @return int
      */
-    public function getCategoryId() {
+    public function get_category_id() {
         return (int)get_config('block_user_directory', 'course_category');
     }
 
-    public function getCategoryContext() {
-        // Limit to a certain category?
-        $categoryId = $this->getCategoryId();
-        if (!$categoryId) {
+    /**
+     * Return the context for the category that the directory is set to work from
+     *
+     * @return context_coursecat|null
+     */
+    public function get_category_context() {
+        $categoryid = $this->get_category_id();
+        if (!$categoryid) {
             return null;
         }
-        return context_coursecat::instance($categoryId);
-    }
-
-    public function getCategoryContextPath() {
-        if ($categoryContext = $this->getCategoryContext()) {
-            return $categoryContext->path;
-        }
-        return null;
-    }
-
-    public function getUsersChildren($userId) {
-        global $DB;
-        $usercontexts = $DB->get_records_sql(
-            "SELECT c.instanceid, c.instanceid, u.id AS userid, u.firstname, u.lastname
-         FROM {role_assignments} ra, {context} c, {user} u
-         WHERE ra.userid = ?
-              AND ra.contextid = c.id
-              AND c.instanceid = u.id
-              AND c.contextlevel = " . \CONTEXT_USER,
-            array($userId));
-        return $usercontexts;
+        return context_coursecat::instance($categoryid);
     }
 
     /**
@@ -463,56 +615,56 @@ class UserDirectory {
      *
      * @return array[] An array of arrays of roleids
      */
-    public function getVisibleRoles() {
-        // Note: The role with the shortname of 'teacher' is non-editing tacher
-        // The Teacher role has the 'editingteacher' shortname
-        $siteRoles = [];
+    public function get_visible_roles() {
+        // Note: The role with the shortname of 'teacher' is non-editing tacher.
+        // The Teacher role has the 'editingteacher' shortname.
+        $siteroles = [];
         foreach (get_all_roles() as $role) {
-            $siteRoles[$role->shortname] = $role->id;
+            $siteroles[$role->shortname] = $role->id;
         }
 
         if ($this->viewinguserisstudent) {
 
             return [
                 'all'     => [
-                    $siteRoles['editingteacher'],
-                    $siteRoles['teacher'],
-                    $siteRoles['student'],
+                    $siteroles['editingteacher'],
+                    $siteroles['teacher'],
+                    $siteroles['student'],
                 ],
                 'teacher' => [
-                    $siteRoles['editingteacher'],
-                    $siteRoles['teacher']
+                    $siteroles['editingteacher'],
+                    $siteroles['teacher']
                 ],
                 'student' => [
-                    $siteRoles['student']
+                    $siteroles['student']
                 ],
             ];
-        } elseif ($this->viewinguserisparent) {
+        } else if ($this->viewinguserisparent) {
 
             return [
                 'teacher' => [
-                    $siteRoles['editingteacher'],
-                    $siteRoles['teacher']
+                    $siteroles['editingteacher'],
+                    $siteroles['teacher']
                 ],
             ];
         } else {
 
             return [
                 'all'     => [
-                    $siteRoles['editingteacher'],
-                    $siteRoles['teacher'],
-                    $siteRoles['student'],
-                    $siteRoles['parent']
+                    $siteroles['editingteacher'],
+                    $siteroles['teacher'],
+                    $siteroles['student'],
+                    $siteroles['parent']
                 ],
                 'teacher' => [
-                    $siteRoles['editingteacher'],
-                    $siteRoles['teacher']
+                    $siteroles['editingteacher'],
+                    $siteroles['teacher']
                 ],
                 'student' => [
-                    $siteRoles['student']
+                    $siteroles['student']
                 ],
                 'parent'  => [
-                    $siteRoles['parent']
+                    $siteroles['parent']
                 ]
             ];
         }

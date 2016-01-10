@@ -16,20 +16,21 @@
 
 /**
  * Main user directory page.
- * Modified from /user/index.php
  *
  * @package   block_user_directory
  * @copyright Anthony Kuske <www.anthonykuske.com> and Adam Morris <www.mistermorris.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once '../../config.php';
-require_once $CFG->libdir . '/tablelib.php';
-require_once $CFG->libdir . '/filelib.php';
+use block_user_directory\local\user_directory;
 
-$userDirectory = new \block_user_directory\UserDirectory();
-$course = $userDirectory->getCourse();
-$context = $userDirectory->getContext();
+require_once('../../config.php');
+require_once($CFG->libdir . '/tablelib.php');
+require_once($CFG->libdir . '/filelib.php');
+
+$userdirectory = new user_directory();
+$course = $userdirectory->get_course();
+$context = $userdirectory->get_context();
 $systemcontext = context_system::instance();
 
 require_login($course);
@@ -40,11 +41,11 @@ require_login($course);
 $bulkoperations = has_capability('moodle/course:bulkmessaging', $context);
 
 // Check to see if groups are being used in this course
-// and if so, set $currentgroup to reflect the current group
-$groupmode = groups_get_course_groupmode($course); // Groups are being used
+// and if so, set $currentgroup to reflect the current group.
+$groupmode = groups_get_course_groupmode($course);
 $currentgroup = groups_get_course_group($course, true);
 if (!$currentgroup) {
-    // To make some other functions work better later
+    // To make some other functions work better later.
     $currentgroup = null;
 }
 $isseparategroups = ($course->groupmode == SEPARATEGROUPS and !has_capability('moodle/site:accessallgroups', $context));
@@ -52,9 +53,12 @@ $isseparategroups = ($course->groupmode == SEPARATEGROUPS and !has_capability('m
 /**
  * Begin output
  */
-$PAGE->set_url($userDirectory->getBaseUrl());
-$PAGE->set_title($userDirectory->display->getPageTitle());
-$PAGE->set_heading($userDirectory->display->getPageTitle());
+
+$currenturl = $userdirectory->get_current_url();
+
+$PAGE->set_url($currenturl);
+$PAGE->set_title($userdirectory->display->get_page_title());
+$PAGE->set_heading($userdirectory->display->get_page_title());
 
 $PAGE->add_body_class('user-directory');
 $PAGE->requires->css('/blocks/user_directory/assets/css/block_user_directory.css');
@@ -62,16 +66,12 @@ $PAGE->requires->css('/blocks/user_directory/assets/css/block_user_directory.css
 echo $OUTPUT->header();
 
 if ($isseparategroups and !$currentgroup) {
-    // The user is not in the group so show message and exit
+    // The user is not in the group so show message and exit.
     echo $OUTPUT->heading(get_string('notingroup'));
     echo $OUTPUT->footer();
     exit;
 }
 
-// Should use this variable so that we don't break stuff every time a variable is added or changed.
-$baseurl = $userDirectory->getBaseUrl();
-
-/// setting up tags
 if ($course->id == SITEID) {
     $filtertype = 'site';
 } else if ($course->id && !$currentgroup) {
@@ -82,9 +82,10 @@ if ($course->id == SITEID) {
     $filterselect = $currentgroup;
 }
 
-// Get the hidden field list
+// What fields to hide.
 if (has_capability('moodle/course:viewhiddenuserfields', $context)) {
-    $hiddenfields = array();  // teachers and admins are allowed to see everything
+    // Teachers and admins are allowed to see everything.
+    $hiddenfields = array();
 } else {
     $hiddenfields = array_flip(explode(',', $CFG->hiddenuserfields));
 }
@@ -95,35 +96,40 @@ if (has_capability('moodle/course:viewhiddenuserfields', $context)) {
 echo '<h2 class="user-directory-title text-center">';
 
 echo get_string('filter_before_role', 'block_user_directory');
-echo $userDirectory->display->getRoleSelector($userDirectory->role);
+echo $userdirectory->display->get_role_selector($userdirectory->role);
 
-if ($userDirectory->role === 'student') {
-    if ($departmentSelectorHtml = $userDirectory->display->getDepartmentSelector($userDirectory->department)) {
+if ($userdirectory->role === 'student') {
+    if ($departmentselectorhtml = $userdirectory->display->get_department_selector($userdirectory->department)) {
         echo get_string('filter_before_department', 'block_user_directory');
-        echo $departmentSelectorHtml;
+        echo $departmentselectorhtml;
     }
 }
 
-if ($courseSelectorHtml = $userDirectory->display->getCourseSelector($userDirectory->courseid)) {
+if ($courseselectorhtml = $userdirectory->display->get_course_selector($userdirectory->courseid)) {
     echo '<span id="departmentform_before">' . get_string('filter_before_course', 'block_user_directory') . '</span>';
-    echo $courseSelectorHtml;
+    echo $courseselectorhtml;
 
-    if ($groupSelectorHtml = $userDirectory->display->getGroupSelector($course)) {
-        echo '(' . $groupSelectorHtml . ')';
+    if ($groupselectorhtml = $userdirectory->display->get_group_selector($course)) {
+        echo '(' . $groupselectorhtml . ')';
     }
 }
 
 echo '</h2>';
 
-echo $userDirectory->display->getSearchForm();
+echo $userdirectory->display->get_search_form();
 
 echo '<hr/>';
 
 if ($currentgroup and (!$isseparategroups or has_capability(
             'moodle/site:accessallgroups',
             $context))
-) {    /// Display info about the group
-    if ($group = groups_get_group($currentgroup)) {
+) {
+    // Display info about the group.
+
+    /** @var stdClass $group */
+    $group = groups_get_group($currentgroup);
+
+    if ($group) {
         if (!empty($group->description) or (!empty($group->picture) and empty($group->hidepicture))) {
             $groupinfotable = new html_table();
             $groupinfotable->attributes['class'] = 'groupinfobox';
@@ -161,12 +167,12 @@ if ($currentgroup and (!$isseparategroups or has_capability(
     }
 }
 
-$mode = \block_user_directory\UserDirectory::MODE_USERDETAILS;
+$mode = user_directory::MODE_USERDETAILS;
 
-/// Define a table showing a list of users in the current role selection
+// Define a table showing a list of users in the current role selection.
 $tablecolumns = array();
 $tableheaders = array();
-if ($bulkoperations && $mode === \block_user_directory\UserDirectory::MODE_BRIEF) {
+if ($bulkoperations && $mode === user_directory::MODE_BRIEF) {
     $tablecolumns[] = 'select';
     $tableheaders[] = get_string('select');
 }
@@ -182,17 +188,17 @@ $skippedextrafields = array(
 $tableheaders[] = get_string('userpic');
 $tableheaders[] = get_string('fullnameuser');
 
-if ($mode === \block_user_directory\UserDirectory::MODE_BRIEF) {
+if ($mode === user_directory::MODE_BRIEF) {
     foreach ($extrafields as $field) {
         $tablecolumns[] = $field;
         $tableheaders[] = get_user_field_name($field);
     }
 }
-if ($mode === \block_user_directory\UserDirectory::MODE_BRIEF && !isset($hiddenfields['city'])) {
+if ($mode === user_directory::MODE_BRIEF && !isset($hiddenfields['city'])) {
     $tablecolumns[] = 'city';
     $tableheaders[] = get_string('city');
 }
-if ($mode === \block_user_directory\UserDirectory::MODE_BRIEF && !isset($hiddenfields['country'])) {
+if ($mode === user_directory::MODE_BRIEF && !isset($hiddenfields['country'])) {
     $tablecolumns[] = 'country';
     $tableheaders[] = get_string('country');
 }
@@ -201,7 +207,7 @@ if (!isset($hiddenfields['lastaccess'])) {
     $tableheaders[] = get_string('lastaccess');
 }
 
-if ($bulkoperations && $mode === \block_user_directory\UserDirectory::MODE_USERDETAILS) {
+if ($bulkoperations && $mode === user_directory::MODE_USERDETAILS) {
     $tablecolumns[] = 'select';
     $tableheaders[] = get_string('select');
 }
@@ -209,7 +215,7 @@ if ($bulkoperations && $mode === \block_user_directory\UserDirectory::MODE_USERD
 $table = new flexible_table('user-index-participants-' . $course->id);
 $table->define_columns($tablecolumns);
 $table->define_headers($tableheaders);
-$table->define_baseurl($baseurl->out());
+$table->define_baseurl($currenturl->out());
 
 if (!isset($hiddenfields['lastaccess'])) {
     $table->sortable(true, 'lastaccess', SORT_DESC);
@@ -233,7 +239,7 @@ $table->set_control_variables(
         TABLE_VAR_SHOW   => 'sshow',
         TABLE_VAR_IFIRST => 'sifirst',
         TABLE_VAR_ILAST  => 'silast',
-        TABLE_VAR_PAGE   => 'spage'
+        TABLE_VAR_PAGE   => 'page'
     ));
 $table->setup();
 
@@ -247,13 +253,13 @@ if ($bulkoperations) {
 /**
  * Get records
  */
-$table->pagesize($userDirectory->perpage, null);
+$table->pagesize($userdirectory->perpage, null);
 
-$results = $userDirectory->getUsers($table, $currentgroup);
+$results = $userdirectory->get_users($table, $currentgroup);
 echo '<div class="text-center">';
 $table->initialbars(true);
 echo '</div>';
-$table->pagesize($userDirectory->perpage, $results->matchcount);
+$table->pagesize($userdirectory->perpage, $results->matchcount);
 
 /**
  * List of results
@@ -268,22 +274,22 @@ if ($results->totalcount < 1) {
     <?php
 } else {
 
-    $pagingBars = '';
-    if ($results->totalcount > $userDirectory->perpage) {
+    $pagingbars = '';
+    if ($results->totalcount > $userdirectory->perpage) {
         $firstinitial = $table->get_initial_first();
         $lastinitial = $table->get_initial_last();
-        $pagingBars .= $userDirectory->display->getLetterBar($firstinitial, $lastinitial);
-        $pagingBars .= $userDirectory->display->getPagingBar($results->matchcount, $table->get_page_start());
+        $pagingbars .= $userdirectory->display->get_letter_bar($firstinitial, $lastinitial);
+        $pagingbars .= $userdirectory->display->get_paging_bar($results->matchcount, $table->get_page_start());
         echo '<div class="text-center">';
-        echo $pagingBars;
+        echo $pagingbars;
         echo '</div>';
         echo '<hr/>';
     }
 
     // If we're showing the users in a specific class, and the viewing user is a teacher, print out the class emails:
-    // (Any teacher. Not specifically a teacher of this class)
+    // (Any teacher. Not specifically a teacher of this class).
 
-    if ($currentgroup && $userDirectory->viewinguseristeacher) {
+    if ($currentgroup && $userdirectory->viewinguseristeacher) {
         echo '<div class="alert alert-info text-center">';
 
         $groupname = groups_get_group_name($currentgroup);
@@ -343,9 +349,9 @@ if ($results->totalcount < 1) {
                 continue;
             }
 
-            $thisuserisparent = $userDirectory->isParent($user);
-            $thisuserisstudent = $userDirectory->isStudent($user);
-            $thisuseristeacher = $userDirectory->isTeacher($user);
+            $thisuserisparent = $userdirectory->is_parent($user);
+            $thisuserisstudent = $userdirectory->is_student($user);
+            $thisuseristeacher = $userdirectory->is_teacher($user);
             /*
                         // Only show parents to teachers
                         if ($thisuserisparent && !$userDirectory->viewinguseristeacher) {
@@ -359,7 +365,6 @@ if ($results->totalcount < 1) {
 
             echo '<tr>';
 
-            //echo '<td><img class="userpicture" alt="" src="http://placehold.it/60/60" /></td>';
             echo '<td>' . $OUTPUT->user_picture($user, array('size' => 80, 'courseid' => $course->id)) . '</td>';
 
             echo '<td>';
@@ -381,7 +386,7 @@ if ($results->totalcount < 1) {
             echo '</td>';
 
             echo '<td>';
-            //Email address field
+            // Email address field.
             if ($user->id == $USER->id ||
                 (
                     $user->maildisplay == 1
@@ -391,35 +396,35 @@ if ($results->totalcount < 1) {
                     has_capability('moodle/course:viewhiddenuserfields', $context)
                 )
             ) {
-                // User's email address
+                // User's email address.
                 echo '<i class="fa fa-envelope"></i> ' . html_writer::link("mailto:$user->email", $user->email);
             }
 
-            if ($thisuserisstudent && $userDirectory->viewinguseristeacher) {
+            if ($thisuserisstudent && $userdirectory->viewinguseristeacher) {
 
-                // Show their parent's email address
-                $parent_email_address = $user->username . "PARENTS@student.ssis-suzhou.net";
+                // Parent's email address.
+                $parentemailaddress = $user->username . "PARENTS@student.ssis-suzhou.net";
                 echo '<br/><i class="fa fa-male"></i> Parents\' Email: ' . html_writer::link(
-                        "mailto:$parent_email_address",
-                        $parent_email_address);
+                        "mailto:$parentemailaddress",
+                        $parentemailaddress);
             }
 
-            if ($thisuserisstudent && $userDirectory->viewinguseristeacher && $user->department >= 6) {
+            if ($thisuserisstudent && $userdirectory->viewinguseristeacher && $user->department >= 6) {
 
-                // Show the address to bulk email all the student's teachers
-                $teachers_email_address = $user->username . "TEACHERS@student.ssis-suzhou.net";
+                // Show the address to bulk email all the student's teachers.
+                $teachersemailaddress = $user->username . "TEACHERS@student.ssis-suzhou.net";
                 echo '<br/><i class="fa fa-magic"></i> All Teachers\' Email: ' . html_writer::link(
-                        "mailto:$teachers_email_address",
-                        $teachers_email_address);
+                        "mailto:$teachersemailaddress",
+                        $teachersemailaddress);
             }
 
-            if ($thisuserisstudent && $userDirectory->viewinguseristeacher && $user->department >= 6) {
+            if ($thisuserisstudent && $userdirectory->viewinguseristeacher && $user->department >= 6) {
 
-                // Show their homeroom teacher's email address
-                $hr_email_address = $user->username . "HROOM@student.ssis-suzhou.net";
+                // Show their homeroom teacher's email address.
+                $hremailaddress = $user->username . "HROOM@student.ssis-suzhou.net";
                 echo '<br/><i class="fa fa-heart"></i> Homeroom Teacher\'s Email: ' . html_writer::link(
-                        "mailto:$hr_email_address",
-                        $hr_email_address);
+                        "mailto:$hremailaddress",
+                        $hremailaddress);
             }
 
             echo '</td>';
@@ -436,14 +441,14 @@ if ($results->totalcount < 1) {
             echo '<td>';
 
             if ($thisuserisstudent) {
-                // OLP Link
+                // Portfolio Link.
                 echo html_writer::link(
                     new moodle_url('/dragonnet/olp.php?userid=' . $user->id),
                     'Online Portfolio',
                     array('class' => 'btn btn-block btn-default'));
             }
 
-            // Button to view notes about a user
+            // Button to view notes about a user.
             if (!empty($CFG->enablenotes) and (has_capability('moodle/notes:manage', $context) || has_capability(
                         'moodle/notes:view',
                         $context))
@@ -454,7 +459,7 @@ if ($results->totalcount < 1) {
                     array('class' => 'btn btn-block btn-default'));
             }
 
-            // Button to "Login As" user
+            // Button to "Login As" user.
             if ($USER->id != $user->id && has_capability('moodle/user:loginas', $context) && !is_siteadmin($user->id)) {
                 echo html_writer::link(
                     new moodle_url('/course/loginas.php?id=' . $course->id . '&user=' . $user->id . '&sesskey=' . sesskey()),
@@ -462,7 +467,7 @@ if ($results->totalcount < 1) {
                     array('class' => 'btn btn-block btn-default'));
             }
 
-            // Button to view user's full profile
+            // Button to view user's full profile.
             echo html_writer::link(
                 new moodle_url('/user/view.php?id=' . $user->id . '&course=' . $course->id),
                 get_string('fullprofile'),
@@ -476,15 +481,18 @@ if ($results->totalcount < 1) {
 
             echo '</tr>';
 
-            // Remember that we've shown this user
+            // Remember that we've shown this user.
             $usersprinted[] = $user->id;
-        } // end foreach user
+        }
+        // End foreach user.
 
         echo '</tbody>';
         echo '</table>';
-    } //end of if matchcount > 0
+    }
+    // End of if matchcount > 0.
 
-}  //end of user details view
+}
+// End of user details view.
 
 if ($bulkoperations) {
     echo '<div class="buttons well text-center">';
@@ -502,7 +510,7 @@ if ($bulkoperations) {
     echo html_writer::select($displaylist, 'formaction', '', array('' => 'choosedots'), array('id' => 'formactionid'));
 
     echo '<input type="hidden" name="id" value="' . $course->id . '" />';
-    echo '<noscript style="display:inline">';
+    echo '<noscript style="display:inline;">';
     echo '<div><input type="submit" value="' . get_string('ok') . '" /></div>';
     echo '</noscript>';
     echo '</div></div>';
@@ -512,9 +520,9 @@ if ($bulkoperations) {
     $PAGE->requires->js_init_call('M.core_user.init_participation', null, false, $module);
 }
 
-if ($results->totalcount > $userDirectory->perpage) {
+if ($results->totalcount > $userdirectory->perpage) {
     echo '<div class="text-center">';
-    echo $pagingBars;
+    echo $pagingbars;
     echo '</div>';
 }
 

@@ -17,6 +17,9 @@
 /**
  * Admin settings for user directory
  *
+ * @var stdClass        $CFG
+ * @var moodle_database $DB
+ *
  * @package   block_user_directory
  * @copyright Anthony Kuske <www.anthonykuske.com> and Adam Morris <www.mistermorris.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -28,22 +31,16 @@ defined('MOODLE_INTERNAL') || die();
  * Course to show enrolments for
  */
 
-// Load all courses to show in the selector
+// Load all courses to show in the selector.
 $courses = $DB->get_records('course', null, 'fullname', 'id, fullname');
 
-// Make a list of courseid => name pairings
-
-// Moodle loads this page multiple times for some reason
-// Hence the function_eixsts check
-if (!function_exists('return_course_fullname_from_course_object')) {
-    function return_course_fullname_from_course_object($course) {
+$courselist = array_map(
+    function ($course) {
         return trim($course->fullname);
-    }
-}
+    },
+    $courses);
 
-$courseList = array_map('return_course_fullname_from_course_object', $courses);
-
-asort($courseList);
+asort($courselist);
 
 $settings->add(
     new admin_setting_configselect(
@@ -51,7 +48,7 @@ $settings->add(
         get_string('settings_courseid_name', 'block_user_directory'),
         get_string('settings_courseid_desc', 'block_user_directory'),
         0,
-        $courseList
+        $courselist
     )
 );
 
@@ -59,16 +56,16 @@ $settings->add(
  * Category to show courses from
  */
 
-// Load all categories to show in the list
-require_once $CFG->dirroot . '/course/externallib.php';
+// Load all categories to show in the list.
+require_once($CFG->dirroot . '/course/externallib.php');
 $categories = core_course_external::get_categories(array(), false);
-$categoryList = array(
+$categorylist = array(
     0 => '[All Cateogries]'
 );
 foreach ($categories as $category) {
-    $categoryList[$category['id']] = $category['name'];
+    $categorylist[$category['id']] = $category['name'];
 }
-asort($categoryList);
+asort($categorylist);
 
 $settings->add(
     new admin_setting_configselect(
@@ -76,7 +73,7 @@ $settings->add(
         get_string('settings_course_category_name', 'block_user_directory'),
         get_string('settings_course_category_desc', 'block_user_directory'),
         0,
-        $categoryList
+        $categorylist
     )
 );
 
@@ -84,49 +81,46 @@ $settings->add(
  * User levels
  */
 
-// Get all system-level cohorts
-require_once $CFG->dirroot . '/cohort/lib.php';
-$systemCtx = context_system::instance();
-$cohorts = cohort_get_cohorts($systemCtx->id, 0, 1000000);
-$cohortList = array(
+// Get all system-level cohorts.
+require_once($CFG->dirroot . '/cohort/lib.php');
+$systemcontext = context_system::instance();
+$cohorts = cohort_get_cohorts($systemcontext->id, 0, 1000000);
+$cohortlist = array(
     0 => '[Not Set]'
 );
 foreach ($cohorts['cohorts'] as $cohort) {
-    $cohortList[$cohort->id] = $cohort->name;
+    $cohortlist[$cohort->id] = $cohort->name;
     if ($cohort->idnumber) {
-        $cohortList[$cohort->id] .= ' [' . s($cohort->idnumber) . ']';
+        $cohortlist[$cohort->id] .= ' [' . s($cohort->idnumber) . ']';
     }
 }
 
-// Student
 $settings->add(
     new admin_setting_configselect(
         'block_user_directory/student_cohort',
         get_string('settings_student_cohort_name', 'block_user_directory'),
         get_string('settings_student_cohort_desc', 'block_user_directory'),
         0,
-        $cohortList
+        $cohortlist
     )
 );
 
-// Teacher
 $settings->add(
     new admin_setting_configselect(
         'block_user_directory/teacher_cohort',
         get_string('settings_teacher_cohort_name', 'block_user_directory'),
         get_string('settings_teacher_cohort_desc', 'block_user_directory'),
         0,
-        $cohortList
+        $cohortlist
     )
 );
 
-// Parent
 $settings->add(
     new admin_setting_configselect(
         'block_user_directory/parent_cohort',
         get_string('settings_parent_cohort_name', 'block_user_directory'),
         get_string('settings_parent_cohort_desc', 'block_user_directory'),
         0,
-        $cohortList
+        $cohortlist
     )
 );

@@ -24,6 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+/** @var stdClass $plugin */
+
 $plugin->version = 2015061100; // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires = 2013111800; // MOODLE_26_STABLE
-$plugin->component = 'block_user_directory'; // Full name of the plugin (used for diagnostics)
+$plugin->requires = 2013111800; // MOODLE_26_STABLE.
+$plugin->component = 'block_user_directory'; // Full name of the plugin (used for diagnostics).
