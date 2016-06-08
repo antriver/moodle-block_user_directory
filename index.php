@@ -294,7 +294,7 @@ if ($results->totalcount < 1) {
 
         $groupname = groups_get_group_name($currentgroup);
         global $DB;
-        $groupidnumber = $DB->get_field('groups', 'name', array('id' => $currentgroup));
+        $groupidnumber = $DB->get_field('groups', 'idnumber', array('id' => $currentgroup));
         echo '<p><i class="fa fa-child"></i> Bulk email for all students in this class:<br/>';
         $emailaddr = 'usebcc' . $groupidnumber . '@student.ssis-suzhou.net';
         echo '<a href="mailto:' . $emailaddr . '">' . $emailaddr . '</a></p>';
